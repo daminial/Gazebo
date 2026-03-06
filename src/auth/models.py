@@ -4,7 +4,7 @@ from sqlalchemy import Column, String, Boolean, DateTime, UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import uuid
-from ..core.database import Base
+from src.core.database import Base
 
 
 class User(Base):
@@ -22,7 +22,7 @@ class User(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
-    # Связи с другими моделями (позже добавите)
+    # Тут будут описанны связи с другими моделями
     # maps = relationship("Map", back_populates="owner")
     # owned_rooms = relationship("GameRoom", back_populates="owner")
 
