@@ -22,6 +22,13 @@ class User(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
+    media_files = relationship(
+        "MediaFile",
+        foreign_keys="[MediaFile.uploaded_by]",
+        back_populates="user",
+        cascade="save-update, merge",
+        lazy="dynamic"
+    )
     # Тут будут описанны связи с другими моделями
     # maps = relationship("Map", back_populates="owner")
     # owned_rooms = relationship("GameRoom", back_populates="owner")

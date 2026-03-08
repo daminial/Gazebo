@@ -44,7 +44,11 @@ class MediaFile(Base):
     sample_rate = Column(Integer, nullable=True)
     audio_codec = Column(String, nullable=True)
 
-    uploaded_by = Column(String, nullable=True)
+    uploaded_by = Column(UUID(as_uuid=True),
+                         ForeignKey("users.id", ondelete="SET NULL"),
+                         nullable=True)
+    user = relationship("User", back_populates="media_files")
+
     uploaded_at = Column(DateTime(timezone=True), server_default=func.now())
 
     is_processed = Column(Boolean, default=False)
