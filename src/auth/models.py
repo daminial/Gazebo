@@ -33,5 +33,6 @@ class User(Base):
     # maps = relationship("Map", back_populates="owner")
     # owned_rooms = relationship("GameRoom", back_populates="owner")
 
+
     def __repr__(self):
         return f"<User(id={self.id}, email={self.email})>"

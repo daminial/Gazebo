@@ -26,6 +26,7 @@ class UserCreate(UserBase):
             raise ValueError('Password must contain at least one digit')
         return v
 
+
 class UserUpdate(BaseModel):
     """Модель для обноваления пользователя"""
     email: Optional[EmailStr] = None
@@ -53,16 +54,19 @@ class UserPublic(UserBase):
     class Config:
         from_attributes = True
 
+
 class Token(BaseModel):
     """Токен доступа пользователя"""
     access_token: str
     token_type: str
     refresh_token: Optional[str] = None
 
+
 class TokenPayload(BaseModel):
     sub: str  # user_id
     exp: int
     type: str = "access"
+
 
 class LoginRequest(BaseModel):
     """Модель входа"""
