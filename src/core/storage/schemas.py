@@ -4,9 +4,11 @@ from enum import Enum
 from typing import Optional, List, Dict, Any, Union
 from uuid import UUID
 
+from sqlalchemy import Integer
+
 
 class MediaType(str, Enum):
-    """Типы медиафайлов (соответствует polymorphic_identity в моделях)"""
+    """Типы медиафайлов"""
     MEDIA_FILE = "media_file"
     IMAGE = "image"
     AUDIO = "audio"
@@ -17,11 +19,11 @@ class MediaFileBase(BaseModel):
     filename: str = Field(..., max_length=255)
     extension: str = Field(..., max_length=50)
     mime_type: str = Field(..., max_length=100)
-    file_size: int = Field(..., gt=0, description="Размер в байтах")
+    file_size: int = Field(..., gt=0)
 
     type: MediaType = MediaType.MEDIA_FILE
 
-    uploaded_by_id: UUID
+    uploaded_by: UUID
 
     is_public: bool = True
     is_processed: bool = False
@@ -42,13 +44,6 @@ class MediaFileBase(BaseModel):
         if not extension or '.' in extension:
             raise ValueError('Расширение должно быть без точки (например: "jpg", "mp3")')
         return extension.lower()
-
-    @field_validator('duration_seconds')
-    @classmethod
-    def validate_duration(cls, v: Optional[int]) -> Optional[int]:
-        if v and v > 7200:  # Не больше 2 часов
-            raise ValueError('Слишком длинный трек')
-        return v
 
 
 class ImageCreate(MediaFileBase):
@@ -82,6 +77,14 @@ class AudioCreate(MediaFileBase):
     waveform_data: Optional[List[float]] = Field(None, max_length=1000)
     loudness: Optional[float] = Field(None, ge=-60, le=0)
 
+    @field_validator('duration_seconds')
+    @classmethod
+    def validate_duration(cls, v: Optional[int]) -> Optional[int]:
+        if v and v > 7200:  # Не больше 2 часов
+            raise ValueError('Слишком длинный трек')
+        return v
+
+
 
 class MediaFileCreate(MediaFileBase):
     """Схема для создания медиафайла в БД после загрузки в хранилище"""
@@ -110,7 +113,7 @@ class MediaFileUpdate(BaseModel):
 
 class MediaFileResponse(MediaFileBase):
     """Схема ответа с данными медиафайла"""
-    id: UUID
+    id: int
     storage_provider: str
     storage_key: str
     bucket: Optional[str]
@@ -147,7 +150,7 @@ class MediaFileResponse(MediaFileBase):
                 "is_processed": True,
                 "storage_provider": "s3",
                 "storage_key": "maps/2026/02/18/dungeon_map.jpg",
-                "bucket": "gazebo-maps",
+                "bucket": "gazebo",
                 "uploaded_at": "2024-01-15T10:30:00",
                 "download_url": "https://storage.example.com/gazebo-maps/maps/2026/02/18/dungeon_map.jpg"
             }
@@ -193,7 +196,7 @@ class BatchUploadResponse(BaseModel):
 
 
 class FileDeleteResponse(BaseModel):
-    id: UUID
+    id: int
     filename: str
     message: str = "Файл успешно удален"
     permanently_deleted: bool = False
@@ -233,39 +236,13 @@ class SignedUrlResponse(BaseModel):
 
 
 class SignedUrlRequest(BaseModel):
-    item_id: UUID
+    item_id: int
     expires_in_seconds: int = Field(3600, ge=60, le=86400)
     method: str = Field("GET", pattern="^(GET|PUT)$")
 
 
 class FilePermissionCheck(BaseModel):
     user_id: UUID
-    item_id: UUID
+    item_id: int
     permission: str = Field(..., pattern="^(read|write|delete)$")
     has_permission: bool
-
-
-class InitiateMultipartUpload(BaseModel):
-    filename: str
-    extension: str = Field(..., max_length=50)
-    type: MediaType
-    file_size: int = Field(..., gt=0)
-    mime_type: str
-    parts: int = Field(..., gt=0, le=10000)
-
-    width: Optional[int] = Field(None, gt=0)
-    height: Optional[int] = Field(None, gt=0)
-    title: Optional[str] = Field(None, max_length=255)
-    artist: Optional[str] = Field(None, max_length=255)
-    caption: Optional[str] = Field(None, max_length=500)
-
-
-class MultipartUploadResponse(BaseModel):
-    upload_id: str
-    type: MediaType
-    storage_provider: str
-    storage_key: str
-    bucket: Optional[str]
-    part_urls: List[HttpUrl]
-    part_size: int
-    expires_at: datetime

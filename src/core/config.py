@@ -16,6 +16,20 @@ class Settings(BaseSettings):
     VERSION: str = "0.0.1"
     DEBUG: bool = False
 
+    # S3 Settings
+    S3_ENDPOINT_URL: str = "http://localhost:9000"
+    S3_ACCESS_KEY: str = "minioadmin"
+    S3_SECRET_KEY: str = "minioadmin"
+    S3_BUCKET_NAME: str = "gazebo-maps"
+    S3_PUBLIC_URL: str = "http://localhost:9000"
+
+    SIGNED_URL_EXPIRY_SECONDS: int = 3600
+    MAX_SIGNED_URL_EXPIRY: int = 86400
+
+    class Config:
+        env_file = ".env"
+        case_sensitive = True
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

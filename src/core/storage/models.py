@@ -21,7 +21,7 @@ class MediaFile(Base):
     """
     __tablename__ = "media_files"
 
-    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    id = Column(Integer, primary_key=True, autoincrement=True)
 
     storage_provider = Column(String, nullable=False, default="local")
     storage_key = Column(String, nullable=False, unique=True)
@@ -30,23 +30,14 @@ class MediaFile(Base):
     filename = Column(String, nullable=False)
     extension = Column(String, nullable=False)
     mime_type = Column(String, nullable=False)
-    size_bytes = Column(BigInteger, default=0)
+    file_size = Column(Integer, default=0)
 
-    type = Column(String(50))
-
-    width = Column(Integer, nullable=True)
-    height = Column(Integer, nullable=True)
-    blurhash = Column(String, nullable=True)
-    has_alpha = Column(Boolean, default=False)
-
-    duration_seconds = Column(Integer, nullable=True)
-    bitrate = Column(Integer, nullable=True)
-    sample_rate = Column(Integer, nullable=True)
-    audio_codec = Column(String, nullable=True)
+    media_type = Column(String(50))
 
     uploaded_by = Column(UUID(as_uuid=True),
                          ForeignKey("users.id", ondelete="SET NULL"),
                          nullable=True)
+
     user = relationship("User", back_populates="media_files")
 
     uploaded_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -56,7 +47,7 @@ class MediaFile(Base):
     deleted_at = Column(DateTime(timezone=True), nullable=True)
 
     __mapper_args__ = {
-        "polymorphic_on": type,
+        "polymorphic_on": media_type,
         "polymorphic_identity": "media_file",
     }
 
@@ -74,7 +65,7 @@ class Image(MediaFile):
     """
     __tablename__ = "images"
 
-    id = Column(String,
+    id = Column(Integer,
                 ForeignKey("media_files.id", ondelete="CASCADE"),
                 primary_key=True)
 
@@ -82,13 +73,18 @@ class Image(MediaFile):
     is_dark = Column(Boolean, nullable=True)
     caption = Column(String, nullable=True)
 
-    thumbnail_id = Column(String,
+    thumbnail_id = Column(Integer,
                           ForeignKey("images.id", ondelete="CASCADE"),
                           nullable=True)
 
     thumbnail = relationship("Image",
                              foreign_keys=[thumbnail_id],
                              remote_side=[id])
+
+    width = Column(Integer, nullable=True)
+    height = Column(Integer, nullable=True)
+    blurhash = Column(String, nullable=True)
+    has_alpha = Column(Boolean, default=False)
 
     __mapper_args__ = {
         "polymorphic_identity": "image",
@@ -99,12 +95,17 @@ class Audio(MediaFile):
     """Специализированная модель для аудио."""
     __tablename__ = "audio_files"
 
-    id = Column(String, ForeignKey("media_files.id", ondelete="CASCADE"), primary_key=True)
+    id = Column(Integer, ForeignKey("media_files.id", ondelete="CASCADE"), primary_key=True)
 
     title = Column(String, nullable=False)
     artist = Column(String, nullable=True)
     album = Column(String, nullable=True)
     genre = Column(String, nullable=True)
+
+    duration_seconds = Column(Integer, nullable=True)
+    bitrate = Column(Integer, nullable=True)
+    sample_rate = Column(Integer, nullable=True)
+    audio_codec = Column(String, nullable=True)
 
     waveform_data = Column(JSON, nullable=True)
     loudness = Column(Float, nullable=True)
