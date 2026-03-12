@@ -3,15 +3,22 @@
 для работы с медиафайлами
 """
 from sqlalchemy import (
-    Column, String, BigInteger, Boolean, Integer,
+    Column, String, Boolean, Integer,
     Enum, JSON, DateTime, ForeignKey, Index, Float
 )
+from enum import Enum as PyEnum
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
-import uuid
 
 from src.core.database import Base
+
+
+class MediaType(str, PyEnum):
+    """Типы медиафайлов"""
+    MEDIA_FILE = "media_file"
+    IMAGE = "image"
+    AUDIO = "audio"
 
 
 class MediaFile(Base):
@@ -23,16 +30,16 @@ class MediaFile(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
 
-    storage_provider = Column(String, nullable=False, default="local")
+    storage_provider = Column(String, nullable=False, default="S3")
     storage_key = Column(String, nullable=False, unique=True)
-    bucket = Column(String, nullable=True)
+    bucket = Column(String, nullable=False)
 
     filename = Column(String, nullable=False)
     extension = Column(String, nullable=False)
     mime_type = Column(String, nullable=False)
-    file_size = Column(Integer, default=0)
+    file_size = Column(Integer, nullable=False)
 
-    media_type = Column(String(50))
+    media_type = Column(Enum(MediaType), nullable=False)
 
     uploaded_by = Column(UUID(as_uuid=True),
                          ForeignKey("users.id", ondelete="SET NULL"),

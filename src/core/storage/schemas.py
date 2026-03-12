@@ -1,10 +1,8 @@
-from pydantic import BaseModel, Field, HttpUrl, ConfigDict, field_validator, ValidationInfo
+from pydantic import BaseModel, Field, HttpUrl, ConfigDict, field_validator
 from datetime import datetime
 from enum import Enum
-from typing import Optional, List, Dict, Any, Union
+from typing import Optional, List, Dict
 from uuid import UUID
-
-from sqlalchemy import Integer
 
 
 class MediaType(str, Enum):

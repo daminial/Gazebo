@@ -26,7 +26,7 @@ class MediaService:
         """Загрузка файла в S3 и создание записи в БД."""
 
         if file_data.file_size > 100 * 1024 * 1024:  # 100 MB
-            raise ValueError("Файл слишком большой. Используйте API для больших файлов")
+            raise ValueError("Файл слишком большой")
 
         storage_key = self._generate_storage_key(file_data, user_id)
 
