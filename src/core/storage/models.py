@@ -61,10 +61,10 @@ class MediaFile(Base):
     }
 
     __table_args__ = (
-        Index('ix_media_files_uploaded_by', 'uploaded_by'),
-        Index('ix_media_files_media_type', 'media_type'),
-        Index('ix_media_files_uploaded_at', 'uploaded_at'),
-        Index('ix_media_files_deleted_at', 'deleted_at'),
+        Index('idx_media_files_uploaded_by', 'uploaded_by'),
+        Index('idx_media_files_media_type', 'media_type'),
+        Index('idx_media_files_uploaded_at', 'uploaded_at'),
+        Index('idx_media_files_deleted_at', 'deleted_at'),
     )
 
 

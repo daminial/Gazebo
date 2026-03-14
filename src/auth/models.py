@@ -25,14 +25,24 @@ class User(Base):
     media_files = relationship(
         "MediaFile",
         foreign_keys="[MediaFile.uploaded_by]",
+        back_populates="uploader",
+        cascade="save-update, merge",
+        lazy="dynamic"
+    )
+    room_associations = relationship(
+        "RoomUsers",
+        foreign_keys="[RoomUsers.user_id]",
         back_populates="user",
         cascade="save-update, merge",
         lazy="dynamic"
     )
-    # Тут будут описанны связи с другими моделями
-    # maps = relationship("Map", back_populates="owner")
-    # owned_rooms = relationship("GameRoom", back_populates="owner")
-
+    controlled_tokens = relationship(
+        "RoomToken",
+        foreign_keys="[RoomToken.controlled_by]",
+        back_populates="controller",
+        cascade="save-update, merge",
+        lazy="dynamic"
+    )
 
     def __repr__(self):
         return f"<User(id={self.id}, email={self.email})>"
