@@ -41,15 +41,17 @@ class MediaFile(Base):
 
     media_type = Column(Enum(MediaType), nullable=False)
 
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
     uploaded_by = Column(UUID(as_uuid=True),
                          ForeignKey("users.id", ondelete="SET NULL"),
                          nullable=True)
 
-    user = relationship("User", back_populates="media_files")
+    uploader = relationship("User", back_populates="media_files")
 
     uploaded_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    is_processed = Column(Boolean, default=False)
     is_public = Column(Boolean, default=True)
     deleted_at = Column(DateTime(timezone=True), nullable=True)
 
@@ -93,6 +95,11 @@ class Image(MediaFile):
     blurhash = Column(String, nullable=True)
     has_alpha = Column(Boolean, default=False)
 
+    map_templates = relationship("MapTemplate", back_populates="image")
+    room_maps = relationship("RoomMap", back_populates="image")
+    creature_templates = relationship("CreatureTemplate", back_populates="image")
+    room_tokens = relationship("RoomToken", back_populates="image")
+
     __mapper_args__ = {
         "polymorphic_identity": "image",
     }
@@ -116,6 +123,9 @@ class Audio(MediaFile):
 
     waveform_data = Column(JSON, nullable=True)
     loudness = Column(Float, nullable=True)
+
+    playlist_tracks = relationship("PlaylistTrack", back_populates="audio")
+    room_players = relationship("RoomAudioPlayer", back_populates="current_track")
 
     __mapper_args__ = {
         "polymorphic_identity": "audio",
