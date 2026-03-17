@@ -63,7 +63,7 @@ class Token(BaseModel):
 
 
 class TokenPayload(BaseModel):
-    sub: str  # user_id
+    sub: UUID
     exp: int
     type: str = "access"
 

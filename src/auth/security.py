@@ -77,8 +77,6 @@ def create_refresh_token(
 
 def verify_token(token: str, is_refresh: bool = False) -> TokenPayload:
     """Верификация токена"""
-    credentials_exception = JWTError("Could not validate credentials")
-
     try:
         secret_key = (
             settings.JWT_REFRESH_SECRET_KEY
@@ -92,14 +90,17 @@ def verify_token(token: str, is_refresh: bool = False) -> TokenPayload:
             algorithms=[settings.JWT_ALGORITHM]
         )
 
-        token_data = TokenPayload(**payload)
+        token_type = payload.get("type")
+        if is_refresh and token_type != "refresh":
+            raise JWTError("Invalid token type")
+        elif not is_refresh and token_type != "access":
+            raise JWTError("Invalid token type")
 
-        if is_refresh and token_data.type != "refresh":
-            raise credentials_exception
-        elif not is_refresh and token_data.type != "access":
-            raise credentials_exception
+        return TokenPayload(
+            sub=payload.get("sub"),
+            exp=payload.get("exp"),
+            type=payload.get("type", "access")
+        )
 
     except JWTError:
-        raise credentials_exception
-
-    return token_data
+        raise

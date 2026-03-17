@@ -22,6 +22,21 @@ class InvalidCredentialsException(AuthException):
             detail="Incorrect username or password"
         )
 
+class EmailAlreadyExistsException(AuthException):
+    def __init__(self):
+        super().__init__(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User with this email already exists"
+        )
+
+
+class UsernameAlreadyExistsException(AuthException):
+    def __init__(self):
+        super().__init__(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User with this username already exists"
+        )
+
 
 class TokenExpiredException(AuthException):
     def __init__(self):

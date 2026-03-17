@@ -1,10 +1,10 @@
-from typing import Optional, Tuple
+from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, or_
 from uuid import UUID
-from datetime import timedelta
 from fastapi import HTTPException, status
 
+from src.auth.exceptions import EmailAlreadyExistsException, UsernameAlreadyExistsException
 from src.auth.models import User
 from src.auth.schemas import UserCreate, UserUpdate, Token, LoginRequest
 from src.auth.security import (
@@ -14,7 +14,6 @@ from src.auth.security import (
     create_refresh_token,
     verify_token
 )
-from src.core.config import Settings
 
 
 class AuthService:
@@ -23,17 +22,18 @@ class AuthService:
 
     async def authenticate_user(self, login_data: LoginRequest) -> Optional[User]:
         """Аутентификация пользователя по email/username и паролю"""
-        # Ищем по email
         stmt = select(User).filter(
-            (User.email == login_data.username) |
-            (User.username == login_data.username),
-            User.is_active == True
+            or_(
+                User.email == login_data.username,
+                User.username == login_data.username
+            ),
+            User.is_active.is_(True)
         )
 
         result = await self.db.execute(stmt)
         user = result.scalar_one_or_none()
 
-        if not user:
+        if not isinstance(user, User):
             return None
 
         if not verify_password(login_data.password, user.hashed_password):
@@ -43,28 +43,20 @@ class AuthService:
 
     async def create_user(self, user_data: UserCreate) -> User:
         """Создание нового пользователя"""
-        # Проверяем, не существует ли уже пользователь
-        stmt = select(User).where(
-            (User.email == user_data.email) |
-            (User.username == user_data.username)
-        )
-        result = await self.db.execute(stmt)
-        existing_user = result.scalar_one_or_none()
 
-        if existing_user:
-            if existing_user.email == user_data.email:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Email already registered"
-                )
-            else:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Username already taken"
-                )
+        email_exists = await self.db.execute(
+            select(User).filter_by(email=user_data.email)
+        )
+        if email_exists.first():
+            raise EmailAlreadyExistsException()
+
+        username_exists = await self.db.execute(
+            select(User).filter_by(username=user_data.username)
+        )
+        if username_exists.first():
+            raise UsernameAlreadyExistsException()
 
         hashed_password = get_password_hash(user_data.password)
-
         user = User(
             email=user_data.email,
             username=user_data.username,
@@ -80,13 +72,13 @@ class AuthService:
 
     async def get_user_by_id(self, user_id: UUID) -> Optional[User]:
         """Получение пользователя по ID"""
-        stmt = select(User).where(User.id == user_id)
+        stmt = select(User).filter_by(id=user_id)
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
 
     async def get_user_by_email(self, email: str) -> Optional[User]:
         """Получение пользователя по email"""
-        stmt = select(User).where(User.email == email)
+        stmt = select(User).filter_by(email=email)
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
 
@@ -107,7 +99,6 @@ class AuthService:
         """Обновление access токена"""
         token_data = verify_token(refresh_token, is_refresh=True)
 
-        # Получаем пользователя
         user = await self.get_user_by_id(UUID(token_data.sub))
         if not user or not user.is_active:
             raise HTTPException(

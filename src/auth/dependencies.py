@@ -1,6 +1,6 @@
 from typing import Optional, Annotated
-from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi import Depends, status
+from fastapi.security import OAuth2PasswordBearer, HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from jose import JWTError
 
@@ -12,19 +12,30 @@ from src.auth.exceptions import AuthException
 
 oauth2_scheme = OAuth2PasswordBearer(
     tokenUrl="/auth/login",
-    auto_error=False
+    auto_error=False,
+)
+
+bearer_scheme = HTTPBearer(
+    auto_error=False,
+    description="JWT токен авторизации. Получите через /auth/login"
 )
 
 
 async def get_current_user(
         token: Optional[str] = Depends(oauth2_scheme),
+        credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme),
         db: AsyncSession = Depends(get_db)
 ) -> User:
     """Зависимость для получения текущего пользователя"""
+
+    if not token and credentials:
+        token = credentials.credentials
+
     if not token:
         raise AuthException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Not authenticated"
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
         )
 
     try:
@@ -32,7 +43,8 @@ async def get_current_user(
     except JWTError:
         raise AuthException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token"
+            detail="Invalid token",
+            headers={"WWW-Authenticate": "Bearer"},
         )
 
     auth_service = AuthService(db)
@@ -41,7 +53,8 @@ async def get_current_user(
     if not user:
         raise AuthException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found"
+            detail="User not found",
+            headers={"WWW-Authenticate": "Bearer"},
         )
 
     return user
@@ -71,7 +84,6 @@ async def get_current_superuser(
     return current_user
 
 
-# Аннотации типов для удобства
 CurrentUser = Annotated[User, Depends(get_current_user)]
 CurrentActiveUser = Annotated[User, Depends(get_current_active_user)]
 CurrentSuperuser = Annotated[User, Depends(get_current_superuser)]
