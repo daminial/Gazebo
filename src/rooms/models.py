@@ -1,22 +1,10 @@
 from sqlalchemy import Column, UUID, String, Integer, ForeignKey, DateTime, func, Enum
 import uuid
 
-from enum import Enum as PyEnum
+from src.rooms.enum import RoomStatus, RoomRole
 from sqlalchemy.orm import relationship
 
 from src.core.database import Base
-
-
-class RoomStatus(str, PyEnum):
-    "Статусы игровой комнаты"
-    IN_GAME = "in_game"
-    PAUSED = "paused"
-
-class RoomRole(str, PyEnum):
-    "Роли внутри комнаты"
-    DM = "dm"
-    PLAYER = "player"
-    SPECTATOR = "spectator"
 
 
 class RoomUsers(Base):
@@ -29,8 +17,8 @@ class RoomUsers(Base):
     user_id = Column(UUID(as_uuid=True),
                      ForeignKey("users.id", ondelete="SET NULL"),
                      nullable=False)
-    room_role = Column(Enum(RoomRole), nullable=False)
 
+    room_role = Column(Enum(RoomRole), nullable=False)
     joined_at = Column(DateTime(timezone=True), server_default=func.now())
 
     room = relationship("Room", back_populates="users")
@@ -54,8 +42,8 @@ class Room(Base):
 
     owner = relationship("User", foreign_keys=[owner_id])
 
-    settings = relationship("RoomSettings", back_populates="room",
-                            uselist=False, cascade="all, delete-orphan")
+    # settings = relationship("RoomSettings", back_populates="room",
+    #                         uselist=False, cascade="all, delete-orphan")
     users = relationship("RoomUsers", back_populates="room",
                          cascade="all, delete-orphan")
 
@@ -64,7 +52,9 @@ class Room(Base):
                         foreign_keys="RoomMap.room_id")
 
     tokens = relationship("RoomToken", back_populates="room",
-                          cascade="all, delete-orphan")
+                          cascade="all, delete-orphan",
+                          foreign_keys="RoomToken.room_id")
 
-    audio_player = relationship("RoomAudioPlayer", back_populates="room",
-                                uselist=False, cascade="all, delete-orphan")
+    # audio_players = relationship("RoomAudioPlayer", back_populates="room",
+    #                              cascade="all, delete-orphan",
+    #                              foreign_keys="RoomAudioPlayer.room_id")
