@@ -25,7 +25,7 @@ class MediaService:
     ) -> Union[MediaFileResponse, ImageResponse, AudioResponse]:
         """Загрузка файла в S3 и создание записи в БД."""
 
-        if file_data.file_size > 100 * 1024 * 1024:  # 100 MB
+        if file_data.file_size > 100 * 1024 * 1024:
             raise ValueError("Файл слишком большой")
 
         storage_key = self._generate_storage_key(file_data, user_id)

@@ -6,7 +6,9 @@ from sqlalchemy import (
     Column, String, Boolean, Integer,
     Enum, JSON, DateTime, ForeignKey, Index, Float
 )
-from enum import Enum as PyEnum
+from sqlalchemy import Enum as SQLAlchemyEnum
+
+from src.core.enum import GazeboEnum
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
@@ -14,7 +16,7 @@ from sqlalchemy.orm import relationship
 from src.core.database import Base
 
 
-class MediaType(str, PyEnum):
+class MediaType(GazeboEnum):
     """Типы медиафайлов"""
     MEDIA_FILE = "media_file"
     IMAGE = "image"
@@ -39,22 +41,22 @@ class MediaFile(Base):
     mime_type = Column(String, nullable=False)
     file_size = Column(Integer, nullable=False)
 
-    media_type = Column(Enum(MediaType), nullable=False)
+    media_type = Column(
+        SQLAlchemyEnum(MediaType),
+        nullable=False
+    )
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now())
 
     uploaded_by = Column(UUID(as_uuid=True),
                          ForeignKey("users.id", ondelete="SET NULL"),
                          nullable=True)
 
-    uploader = relationship("User", back_populates="media_files")
-
-    uploaded_at = Column(DateTime(timezone=True), server_default=func.now())
-
     is_public = Column(Boolean, default=True)
     deleted_at = Column(DateTime(timezone=True), nullable=True)
 
+    uploader = relationship("User", back_populates="media_files")
     __mapper_args__ = {
         "polymorphic_on": media_type,
         "polymorphic_identity": "media_file",
@@ -63,7 +65,7 @@ class MediaFile(Base):
     __table_args__ = (
         Index('idx_media_files_uploaded_by', 'uploaded_by'),
         Index('idx_media_files_media_type', 'media_type'),
-        Index('idx_media_files_uploaded_at', 'uploaded_at'),
+        Index('idx_media_files_created_at', 'created_at'),
         Index('idx_media_files_deleted_at', 'deleted_at'),
     )
 
@@ -96,9 +98,7 @@ class Image(MediaFile):
     has_alpha = Column(Boolean, default=False)
 
     map_templates = relationship("MapTemplate", back_populates="image")
-    room_maps = relationship("RoomMap", back_populates="image")
     creature_templates = relationship("CreatureTemplate", back_populates="image")
-    room_tokens = relationship("RoomToken", back_populates="image")
 
     __mapper_args__ = {
         "polymorphic_identity": "image",
@@ -123,9 +123,6 @@ class Audio(MediaFile):
 
     waveform_data = Column(JSON, nullable=True)
     loudness = Column(Float, nullable=True)
-
-    playlist_tracks = relationship("PlaylistTrack", back_populates="audio")
-    room_players = relationship("RoomAudioPlayer", back_populates="current_track")
 
     __mapper_args__ = {
         "polymorphic_identity": "audio",

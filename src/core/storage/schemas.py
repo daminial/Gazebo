@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field, HttpUrl, ConfigDict, field_validator
 from datetime import datetime
 from enum import Enum
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, ForwardRef
 from uuid import UUID
 
 
@@ -22,10 +22,7 @@ class MediaFileBase(BaseModel):
     type: MediaType = MediaType.MEDIA_FILE
 
     uploaded_by: UUID
-
     is_public: bool = True
-    is_processed: bool = False
-
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -55,7 +52,7 @@ class ImageCreate(MediaFileBase):
     caption: Optional[str] = Field(None, max_length=500)
     palette: Optional[List[str]] = None
     is_dark: Optional[bool] = None
-    thumbnail_id: Optional[UUID] = None
+    thumbnail_id: Optional[int] = None
 
 
 class AudioCreate(MediaFileBase):
@@ -78,79 +75,77 @@ class AudioCreate(MediaFileBase):
     @field_validator('duration_seconds')
     @classmethod
     def validate_duration(cls, v: Optional[int]) -> Optional[int]:
-        if v and v > 7200:  # Не больше 2 часов
+        if v and v > 7200:
             raise ValueError('Слишком длинный трек')
         return v
 
 
-
 class MediaFileCreate(MediaFileBase):
     """Схема для создания медиафайла в БД после загрузки в хранилище"""
-    storage_provider: str = Field("local", max_length=50)
+    storage_provider: str = Field("s3", max_length=50)
     storage_key: str = Field(..., max_length=512, description="Полный путь к файлу в хранилище")
-    bucket: Optional[str] = Field(None, max_length=100)
+    bucket: str = Field(..., max_length=100)
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
 
 class MediaFileUpdate(BaseModel):
     """Схема для обновления метаданных"""
     filename: Optional[str] = Field(None, max_length=255)
+    is_public: Optional[bool] = None
     caption: Optional[str] = Field(None, max_length=500)
+    is_dark: Optional[bool] = None
+    palette: Optional[List[str]] = None
+
     title: Optional[str] = Field(None, max_length=255)
     artist: Optional[str] = Field(None, max_length=255)
     album: Optional[str] = Field(None, max_length=255)
     genre: Optional[str] = Field(None, max_length=100)
-    is_public: Optional[bool] = None
-    is_processed: Optional[bool] = None
-
-    palette: Optional[List[str]] = None
-    is_dark: Optional[bool] = None
-
-    waveform_data: Optional[List[float]] = None
-    loudness: Optional[float] = Field(None, ge=-60, le=0)
 
 
-class MediaFileResponse(MediaFileBase):
+class MediaFileResponse(BaseModel):
     """Схема ответа с данными медиафайла"""
     id: int
     storage_provider: str
     storage_key: str
-    bucket: Optional[str]
-    uploaded_at: datetime
+    bucket: str  # Made required
+    filename: str
+    extension: str
+    mime_type: str
+    file_size: int
+
+    media_type: MediaType
+
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    uploaded_by: UUID
+    is_public: bool
     deleted_at: Optional[datetime] = None
 
+    caption: Optional[str] = None
     palette: Optional[List[str]] = None
     is_dark: Optional[bool] = None
-    thumbnail_id: Optional[UUID] = None
-    waveform_data: Optional[List[float]] = None
-    loudness: Optional[float] = None
 
     download_url: Optional[HttpUrl] = None
     public_url: Optional[HttpUrl] = None
-    thumbnail_url: Optional[HttpUrl] = None
 
     model_config = ConfigDict(
         from_attributes=True,
         json_schema_extra={
             "example": {
-                "id": "123e4567-e89b-12d3-a456-426614174000",
+                "id": 1,
                 "filename": "dungeon_map",
                 "extension": "jpg",
                 "mime_type": "image/jpeg",
                 "file_size": 2048576,
-                "type": "image",
-                "uploaded_by_id": "123e4567-e89b-12d3-a456-426614174001",
-                "width": 1920,
-                "height": 1080,
-                "blurhash": "L5H2EC=PM+yV0g-mq.wG9c010J}I",
-                "has_alpha": False,
-                "caption": "Карта подземелья",
+                "media_type": "image",
+                "uploaded_by": "123e4567-e89b-12d3-a456-426614174000",
+                "created_at": "2024-01-15T10:30:00",
                 "is_public": True,
-                "is_processed": True,
                 "storage_provider": "s3",
-                "storage_key": "maps/2026/02/18/dungeon_map.jpg",
-                "bucket": "gazebo",
-                "uploaded_at": "2024-01-15T10:30:00",
-                "download_url": "https://storage.example.com/gazebo-maps/maps/2026/02/18/dungeon_map.jpg"
+                "storage_key": "maps/2026/03/05/dungeon_map.jpg",
+                "bucket": "gazebo-maps",
+                "public_url": "https://storage.example.com/gazebo-maps/maps/2026/03/05/dungeon_map.jpg"
             }
         }
     )
@@ -158,13 +153,39 @@ class MediaFileResponse(MediaFileBase):
 
 class ImageResponse(MediaFileResponse):
     """Специализированный ответ для изображений"""
-    type: MediaType = MediaType.IMAGE
+    media_type: MediaType = MediaType.IMAGE
+
+    width: Optional[int] = None
+    height: Optional[int] = None
+    blurhash: Optional[str] = None
+    has_alpha: bool = False
+    thumbnail_id: Optional[int] = None
     thumbnail: Optional['ImageResponse'] = None
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AudioResponse(MediaFileResponse):
     """Специализированный ответ для аудио"""
-    type: MediaType = MediaType.AUDIO
+    media_type: MediaType = MediaType.AUDIO
+
+    duration_seconds: Optional[int] = None
+    bitrate: Optional[int] = None
+    sample_rate: Optional[int] = None
+    audio_codec: Optional[str] = None
+
+    title: Optional[str] = None
+    artist: Optional[str] = None
+    album: Optional[str] = None
+    genre: Optional[str] = None
+
+    waveform_data: Optional[List[float]] = None
+    loudness: Optional[float] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+ImageResponse.model_rebuild()
 
 
 class MediaFileListResponse(BaseModel):
@@ -201,15 +222,14 @@ class FileDeleteResponse(BaseModel):
 
 
 class MediaFileFilter(BaseModel):
-    uploaded_by_id: Optional[UUID] = None
-    type: Optional[MediaType] = None
+    uploaded_by: Optional[UUID] = None
+    media_type: Optional[MediaType] = None
     mime_type: Optional[str] = None
     filename_search: Optional[str] = Field(None, description="Поиск по имени файла")
     extension: Optional[str] = None
     date_from: Optional[datetime] = None
     date_to: Optional[datetime] = None
     is_public: Optional[bool] = None
-    is_processed: Optional[bool] = None
     include_deleted: bool = False
     page: int = Field(1, ge=1)
     size: int = Field(20, ge=1, le=100)
@@ -228,7 +248,7 @@ class StorageStats(BaseModel):
 class SignedUrlResponse(BaseModel):
     url: HttpUrl
     expires_at: datetime
-    item_id: UUID
+    item_id: int
     filename: str
     method: str = "GET"
 
