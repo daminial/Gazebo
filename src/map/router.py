@@ -102,4 +102,4 @@ async def delete_map_template(
     """Удалить шаблон карты"""
     template_service = MapTemplateService(db=db, media_service=None)
     await template_service.delete_template(template_id, current_user.id)
-    return {"message": "Template deleted"}
+    return {"message": "Шаблон карты удален"}

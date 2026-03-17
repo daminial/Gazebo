@@ -68,7 +68,6 @@ class RoomMapBase(BaseModel):
 
 
 class RoomMapCreate(RoomMapBase):
-    room_id: UUID
     template_id: int = Field(..., gt=0)
 
 
