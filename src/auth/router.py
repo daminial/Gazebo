@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.auth.models import User
 from src.core.database import get_db
 from src.auth.schemas import (
     Token,
@@ -16,9 +17,8 @@ from src.auth.service import AuthService
 from src.auth.dependencies import (
     CurrentUser,
     CurrentActiveUser,
-    get_current_active_user
 )
-from .exceptions import InvalidCredentialsException
+from src.auth.exceptions import InvalidCredentialsException
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 
@@ -47,7 +47,7 @@ async def login(
     auth_service = AuthService(db)
 
     user = await auth_service.authenticate_user(login_data)
-    if not user:
+    if not isinstance(user, User):
         raise InvalidCredentialsException()
 
     tokens = await auth_service.create_tokens(user)
@@ -68,7 +68,7 @@ async def login_form(
     )
 
     user = await auth_service.authenticate_user(login_data)
-    if not user:
+    if not isinstance(user, User):
         raise InvalidCredentialsException()
 
     tokens = await auth_service.create_tokens(user)

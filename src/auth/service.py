@@ -2,9 +2,8 @@ from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
 from uuid import UUID
-from fastapi import HTTPException, status
 
-from src.auth.exceptions import EmailAlreadyExistsException, UsernameAlreadyExistsException
+from src.auth.exceptions import EmailAlreadyExistsException, UsernameAlreadyExistsException, InvalidCredentialsException
 from src.auth.models import User
 from src.auth.schemas import UserCreate, UserUpdate, Token, LoginRequest
 from src.auth.security import (
@@ -99,12 +98,14 @@ class AuthService:
         """Обновление access токена"""
         token_data = verify_token(refresh_token, is_refresh=True)
 
-        user = await self.get_user_by_id(UUID(token_data.sub))
+        try:
+            user_id = UUID(token_data.sub)
+        except ValueError:
+            raise InvalidCredentialsException()
+
+        user = await self.get_user_by_id(user_id)
         if not user or not user.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid or expired refresh token"
-            )
+            raise InvalidCredentialsException()
 
         return await self.create_tokens(user)
 
