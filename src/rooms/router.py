@@ -268,14 +268,12 @@ async def update_token_position(
     """Обновить позицию токена"""
     service = RoomService(db)
 
-    if not await service.can_control_token(token_id, room_id, current_user.id):
-        raise HTTPException(403, "Нет прав на управление этим токеном")
-
     await service.update_token_position(
         token_id,
         position.position_x,
         position.position_y,
-        position.rotation
+        position.rotation,
+        current_user
     )
     return {"message": "Позиция обновлена"}
 
@@ -294,8 +292,12 @@ async def update_token_hp(
     if not await service.can_control_token(token_id, room_id, current_user.id):
         raise HTTPException(403, "Нет прав на управление этим токеном")
 
-    await service.update_token_hp(token_id, hp_update.current_hp, hp_update.hp_delta)
-    return {"message": "HP обновлено"}
+    updated_hp = await service.update_token_hp(token_id, hp_update.hp_delta)
+    return {
+        "message": "HP обновлено",
+        "new_hp": updated_hp,
+        "delta_applied": hp_update.hp_delta
+    }
 
 
 @router.patch("/{room_id}/tokens/{token_id}/conditions")

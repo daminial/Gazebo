@@ -124,7 +124,6 @@ class TokenPositionUpdate(BaseModel):
     rotation: Optional[float] = None
 
 class TokenHPUpdate(BaseModel):
-    current_hp: int
     hp_delta: int
 
 class TokenConditionsUpdate(BaseModel):

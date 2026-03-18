@@ -10,7 +10,7 @@ from src.rooms.exceptions import RoomNotFoundError, RoomPermissionError, RoomAcc
 from src.rooms.models import Room, RoomUsers, RoomRole
 from src.auth.models import User
 from src.map.models import RoomMap
-from src.bestiary.models import RoomToken
+from src.bestiary.models import RoomToken, CreatureTemplate
 from src.rooms.schemas import RoomUserListItem
 
 
@@ -196,11 +196,18 @@ class RoomService:
         """Добавить токен в комнату"""
         room = await self.get_room(room_id)
         if not self.is_dm(room_id, user.id):
-            raise RoomPermissionError("DM может создавать токены")
+            raise RoomPermissionError("только DM может загружать токены")
+
+        token_dict = token_data.model_dump()
+
+        if token_dict.get('current_hp') is None and token_dict.get('creature_template_id'):
+            template = await self.db.get(CreatureTemplate, token_dict['creature_template_id'])
+            if template and template.max_hp:
+                token_dict['current_hp'] = template.max_hp
 
         token = RoomToken(
             room_id=room_id,
-            **token_data.model_dump()
+            **token_dict
         )
         self.db.add(token)
         await self.db.commit()
@@ -223,8 +230,6 @@ class RoomService:
             controlled_by: Optional[UUID] = None
     ) -> List[RoomToken]:
         """Получить список токенов комнаты"""
-        from sqlalchemy import select
-
         query = select(RoomToken).filter_by(room_id=room_id)
 
         if controlled_by is not None:
@@ -251,12 +256,17 @@ class RoomService:
                 token.rotation = rotation
             await self.db.commit()
 
-    async def update_token_hp(self, token_id: int, hp: int, hp_delta: int):
-        """Обновить HP токена"""
+    async def update_token_hp(self, token_id: int, hp_delta: int) -> int:
+        """Обновить HP токена, возвращает новое значение HP"""
         token = await self.db.get(RoomToken, token_id)
-        if token:
-            token.current_hp = hp + hp_delta
-            await self.db.commit()
+        token.current_hp += hp_delta
+        if token.current_hp < 0:
+            token.current_hp = 0
+
+        await self.db.commit()
+        await self.db.refresh(token)
+
+        return token.current_hp
 
     async def update_token_conditions(
             self,
@@ -326,8 +336,6 @@ class RoomService:
 
     async def is_in_room(self, room_id: UUID, user_id: UUID) -> bool:
         """Проверить, находится ли пользователь в комнате"""
-        from sqlalchemy import select
-
         result = await self.db.execute(
             select(RoomUsers).filter_by(
                 room_id=room_id,
