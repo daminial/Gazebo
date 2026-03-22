@@ -33,8 +33,6 @@ class RoomService:
             room_role=RoomRole.DM
         )
         self.db.add(room_user)
-        await self.db.commit()
-        await self.db.refresh(room)
 
         return room
 
@@ -59,8 +57,6 @@ class RoomService:
         for key, value in data.items():
             setattr(room, key, value)
 
-        await self.db.commit()
-        await self.db.refresh(room)
         return room
 
     async def delete_room(self, room_id: UUID, user: User):
@@ -71,7 +67,6 @@ class RoomService:
             raise RoomPermissionError("Только владелец может удалить комнату")
 
         await self.db.delete(room)
-        await self.db.commit()
 
     async def add_user_to_room(self, room_id: UUID, user: User, role: RoomRole = RoomRole.PLAYER) -> RoomUsers:
         """Добавить пользователя в комнату"""
@@ -86,8 +81,6 @@ class RoomService:
             room_role=role
         )
         self.db.add(room_user)
-        await self.db.commit()
-        await self.db.refresh(room_user)
         return room_user
 
     async def remove_user_from_room(self, room_id: UUID, user_id: UUID, acting_user: User):
@@ -111,7 +104,6 @@ class RoomService:
         room_user = result.scalar_one()
 
         await self.db.delete(room_user)
-        await self.db.commit()
 
     async def change_user_role(self, room_id: UUID, user_id: UUID, new_role: RoomRole, acting_user: User) -> RoomUsers:
         """Изменить роль пользователя"""
@@ -135,8 +127,6 @@ class RoomService:
             raise RoomPermissionError("DM не может изменить свою роль")
 
         room_user.room_role = new_role
-        await self.db.commit()
-        await self.db.refresh(room_user)
         return room_user
 
     async def get_room_users(self, room_id: UUID, role: Optional[RoomRole] = None) -> List[RoomUserListItem]:
@@ -170,8 +160,6 @@ class RoomService:
             name_in_room=name
         )
         self.db.add(room_map)
-        await self.db.commit()
-        await self.db.refresh(room_map, attribute_names=["template"])
 
         return room_map
 
@@ -189,7 +177,6 @@ class RoomService:
             raise HTTPException(404, "Комната не найдена")
 
         await self.db.delete(room_map)
-        await self.db.commit()
 
     # Работа с токенами
     async def add_token_to_room(self, room_id: UUID, token_data: RoomTokenCreate, user: User) -> RoomToken:
@@ -210,8 +197,6 @@ class RoomService:
             **token_dict
         )
         self.db.add(token)
-        await self.db.commit()
-        await self.db.refresh(token)
         return token
 
     async def delete_token(self, token_id: int) -> None:
@@ -222,7 +207,6 @@ class RoomService:
             raise ValueError(f"{token_id} не найден или не является токеном в комнате")
 
         await self.db.delete(token)
-        await self.db.commit()
 
     async def get_list_tokens(
             self,
@@ -243,9 +227,6 @@ class RoomService:
         """Обновить позицию токена"""
         token = await self.db.get(RoomToken, token_id)
 
-        if not token:
-            raise ValueError(f"Токен {token_id} не найден")
-
         if not await self.can_control_token(token_id, token.room_id, user.id):
             raise RoomPermissionError("Нет прав на управление этим токеном")
 
@@ -254,7 +235,6 @@ class RoomService:
             token.position_y = y
             if rotation is not None:
                 token.rotation = rotation
-            await self.db.commit()
 
     async def update_token_hp(self, token_id: int, hp_delta: int) -> int:
         """Обновить HP токена, возвращает новое значение HP"""
@@ -262,9 +242,6 @@ class RoomService:
         token.current_hp += hp_delta
         if token.current_hp < 0:
             token.current_hp = 0
-
-        await self.db.commit()
-        await self.db.refresh(token)
 
         return token.current_hp
 
@@ -296,8 +273,6 @@ class RoomService:
 
             token.conditions = list(current)
 
-        await self.db.commit()
-        await self.db.refresh(token)
         return token
 
     async def set_token_visibility(self, token_id: int, is_visible: bool) -> RoomToken:
@@ -307,8 +282,6 @@ class RoomService:
             raise ValueError(f"{token_id} не найден или не является токеном в комнате")
 
         token.is_visible = is_visible
-        await self.db.commit()
-        await self.db.refresh(token)
         return token
 
     async def can_control_token(self, token_id: int, room_id: UUID, user_id: UUID) -> bool:
@@ -317,7 +290,7 @@ class RoomService:
         if not token or token.room_id != room_id:
             return False
 
-        if self.is_dm(user_id, room_id):
+        if await self.is_dm(room_id, user_id):
             return True
 
         return token.controlled_by == user_id

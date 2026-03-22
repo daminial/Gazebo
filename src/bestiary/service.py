@@ -72,7 +72,7 @@ class CreatureTemplateService:
         )
 
         self.db.add(template)
-        await self.db.commit()
+        await self.db.flush()
 
         result = await self.db.execute(
             select(CreatureTemplate)
@@ -128,14 +128,6 @@ class CreatureTemplateService:
             if value is not None and hasattr(template, key):
                 setattr(template, key, value)
 
-        await self.db.commit()
-
-        result = await self.db.execute(
-            select(CreatureTemplate)
-            .filter_by(id=template.id)
-            .options(selectinload(CreatureTemplate.image))
-        )
-        template = result.scalar_one()
         return template
 
     async def delete_template(self, template_id: int, user_id: UUID):
@@ -146,4 +138,3 @@ class CreatureTemplateService:
             raise TemplatePermissionError("You can only delete your own templates")
 
         await self.db.delete(template)
-        await self.db.commit()

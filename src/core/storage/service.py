@@ -1,4 +1,5 @@
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.core.storage.s3Client import S3Client
@@ -13,7 +14,7 @@ from typing import BinaryIO, Union
 
 
 class MediaService:
-    def __init__(self, s3_client: S3Client, db_session):
+    def __init__(self, s3_client: S3Client, db_session: AsyncSession):
         self.s3 = s3_client
         self.db = db_session
 
@@ -61,8 +62,7 @@ class MediaService:
             )
 
         self.db.add(db_file)
-        await self.db.commit()
-        await self.db.refresh(db_file)
+        await self.db.flush()
 
         if file_data.type == MediaType.IMAGE:
             stmt = select(Image).where(Image.id == db_file.id).options(selectinload(Image.thumbnail))

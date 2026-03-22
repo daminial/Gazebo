@@ -46,13 +46,13 @@ class AuthService:
         email_exists = await self.db.execute(
             select(User).filter_by(email=user_data.email)
         )
-        if email_exists.first():
+        if email_exists.scalar_one_or_none():
             raise EmailAlreadyExistsException()
 
         username_exists = await self.db.execute(
             select(User).filter_by(username=user_data.username)
         )
-        if username_exists.first():
+        if username_exists.scalar_one_or_none():
             raise UsernameAlreadyExistsException()
 
         hashed_password = get_password_hash(user_data.password)
@@ -64,9 +64,7 @@ class AuthService:
         )
 
         self.db.add(user)
-        await self.db.commit()
-        await self.db.refresh(user)
-
+        await self.db.flush()
         return user
 
     async def get_user_by_id(self, user_id: UUID) -> Optional[User]:
@@ -100,7 +98,7 @@ class AuthService:
 
         try:
             user_id = UUID(token_data.sub)
-        except ValueError:
+        except (ValueError, AttributeError, TypeError):
             raise InvalidCredentialsException()
 
         user = await self.get_user_by_id(user_id)
@@ -124,8 +122,5 @@ class AuthService:
 
         for field, value in update_dict.items():
             setattr(user, field, value)
-
-        await self.db.commit()
-        await self.db.refresh(user)
 
         return user

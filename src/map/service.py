@@ -59,8 +59,7 @@ class MapTemplateService:
         )
 
         self.db.add(template)
-        await self.db.commit()
-        await self.db.refresh(template)
+        await self.db.flush()
 
         result = await self.db.execute(
             select(MapTemplate)
@@ -113,14 +112,6 @@ class MapTemplateService:
             if value is not None and hasattr(template, key):
                 setattr(template, key, value)
 
-        await self.db.commit()
-
-        result = await self.db.execute(
-            select(MapTemplate)
-            .filter_by(id=template.id)
-            .options(selectinload(MapTemplate.image))
-        )
-        template = result.scalar_one()
         return template
 
     async def delete_template(self, template_id: int, user_id: UUID):
@@ -133,4 +124,3 @@ class MapTemplateService:
             raise TemplatePermissionError("You can only delete your own templates")
 
         await self.db.delete(template)
-        await self.db.commit()

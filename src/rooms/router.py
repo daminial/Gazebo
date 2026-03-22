@@ -41,7 +41,7 @@ async def get_room(
     service = RoomService(db)
     room = await service.get_room(room_id)
 
-    if not service.is_in_room(room_id, current_user.id):
+    if not await service.is_in_room(room_id, current_user.id):
         raise HTTPException(403, "Вы не в этой комнате")
 
     return room
