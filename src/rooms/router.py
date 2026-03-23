@@ -16,7 +16,7 @@ from src.rooms.schemas import (RoomResponse, RoomCreate, RoomUpdate, RoomUserLis
                                TokenPositionUpdate, TokenHPUpdate, TokenConditionsUpdate, TokenVisibilityUpdate,
                                RoomMapInRoom)
 
-router = APIRouter(prefix="/rooms", tags=["rooms"])
+router = APIRouter(prefix="/rooms", tags=["rooms"], redirect_slashes=False)
 
 
 @router.post("", response_model=RoomResponse)

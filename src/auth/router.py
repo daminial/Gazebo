@@ -11,7 +11,8 @@ from src.auth.schemas import (
     UserUpdate,
     UserPublic,
     UserInDB,
-    LoginRequest
+    LoginRequest,
+    RefreshTokenRequest
 )
 from src.auth.service import AuthService
 from src.auth.dependencies import (
@@ -20,7 +21,7 @@ from src.auth.dependencies import (
 )
 from src.auth.exceptions import InvalidCredentialsException
 
-router = APIRouter(prefix="/auth", tags=["authentication"])
+router = APIRouter(prefix="/auth", tags=["authentication"], redirect_slashes=False)
 
 
 @router.post(
@@ -77,12 +78,12 @@ async def login_form(
 
 @router.post("/refresh", response_model=Token)
 async def refresh_token(
-        refresh_token: str,
+        request: RefreshTokenRequest,
         db: AsyncSession = Depends(get_db)
 ):
     """Обновление access токена"""
     auth_service = AuthService(db)
-    tokens = await auth_service.refresh_access_token(refresh_token)
+    tokens = await auth_service.refresh_access_token(request.refresh_token)
     return tokens
 
 

@@ -19,7 +19,7 @@ from src.map.schemas import (
 )
 from src.map.service import MapTemplateService
 
-router = APIRouter(prefix="/map-templates", tags=["map-templates"])
+router = APIRouter(prefix="/map-templates", tags=["map-templates"], redirect_slashes=False)
 
 
 @router.post("", response_model=MapTemplateResponse)

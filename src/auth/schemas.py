@@ -72,3 +72,8 @@ class LoginRequest(BaseModel):
     """Модель входа"""
     username: str
     password: str
+
+
+class RefreshTokenRequest(BaseModel):
+    """Модель для обновления токена"""
+    refresh_token: str

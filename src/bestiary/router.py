@@ -19,7 +19,7 @@ from src.bestiary.schemas import (
 )
 from src.bestiary.exceptions import TemplateNotFoundError, TemplatePermissionError
 
-router = APIRouter(prefix="/bestiary/templates", tags=["bestiary"])
+router = APIRouter(prefix="/bestiary/templates", tags=["bestiary"], redirect_slashes=False)
 
 @router.post("", response_model=CreatureTemplateResponse)
 async def create_creature_template(
