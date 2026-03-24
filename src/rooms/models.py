@@ -32,6 +32,9 @@ class Room(Base):
     name = Column(String, nullable=False)
     status = Column(Enum(RoomStatus), default=RoomStatus.PAUSED)
 
+    image_id = Column(Integer,
+                      ForeignKey("images.id", ondelete="CASCADE"),
+                      nullable=False, default=1)
     owner_id = Column(UUID(as_uuid=True),
                       ForeignKey("users.id", ondelete="CASCADE"),
                       nullable=False,
@@ -39,6 +42,8 @@ class Room(Base):
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    image = relationship("Image")
 
     owner = relationship("User", foreign_keys=[owner_id])
 

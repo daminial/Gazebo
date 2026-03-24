@@ -8,6 +8,7 @@ from src.bestiary.schemas import RoomTokenResponse, RoomTokenCreate
 from src.core.database import get_db
 from src.auth.dependencies import get_current_user
 from src.auth.models import User
+from src.core.storage.models import Image
 from src.map.schemas import RoomMapCreate
 from src.rooms.enum import RoomRole
 from src.rooms.service import RoomService
@@ -26,9 +27,28 @@ async def create_room(
         current_user: User = Depends(get_current_user)
 ):
     """Создать новую комнату"""
+    image = await db.get(Image, room_data.image_id)
+    if not image:
+        raise HTTPException(404, f"Изображение с id {room_data.image_id} не найдено")
+
     service = RoomService(db)
-    room = await service.create_room(room_data.name, current_user)
+    room = await service.create_room(
+        name=room_data.name,
+        image_id=room_data.image_id,
+        user=current_user
+    )
     return room
+
+
+@router.get("/my", response_model=List[RoomResponse])
+async def get_my_rooms(
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_user)
+):
+    """Возвращает список всех комнат, в которых участвует пользователь"""
+    service = RoomService(db)
+    rooms = await service.get_user_rooms(current_user)
+    return rooms
 
 
 @router.get("/{room_id}", response_model=RoomResponse)
@@ -57,9 +77,16 @@ async def update_room(
     """Обновить комнату"""
     service = RoomService(db)
 
+    if room_update.image_id is not None:
+        image = await db.get(Image, room_update.image_id)
+        if not image:
+            raise HTTPException(404, f"Изображение с id {room_update.image_id} не найдено")
+
     update_data = room_update.model_dump(exclude_unset=True)
     room = await service.update_room(room_id, update_data, current_user)
 
+    await db.commit()
+    await db.refresh(room)
     return room
 
 @router.delete("/{room_id}")

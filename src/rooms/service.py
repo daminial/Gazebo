@@ -18,10 +18,11 @@ class RoomService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def create_room(self, name: str, user: User) -> Room:
+    async def create_room(self, name: str, image_id: int, user: User) -> Room:
         """Создать новую комнату"""
         room = Room(
             name=name,
+            image_id=image_id,
             owner_id=user.id
         )
         self.db.add(room)
@@ -36,16 +37,26 @@ class RoomService:
 
         return room
 
-    async def get_room(self, room_id: UUID) -> Room:
-        """Получить комнату по ID"""
-        room = await self.db.get(Room, room_id)
-        if not isinstance(room, Room):
-            raise RoomNotFoundError()
-        return room
-
     async def get_user_rooms(self, user: User) -> List[Room]:
         """Получить все комнаты пользователя"""
-        return user.room_associations.all()
+        result = await self.db.execute(
+            select(Room)
+            .options(joinedload(Room.image))
+            .join(RoomUsers)
+            .filter_by(user_id=user.id)
+            .order_by(Room.created_at.desc())
+        )
+        return list(result.scalars().all())
+
+    async def get_room(self, room_id: UUID) -> Room:
+        """Получить комнату по ID с загрузкой изображения"""
+        result = await self.db.execute(
+            select(Room)
+            .options(joinedload(Room.image))
+            .filter_by(id=room_id)
+        )
+        room = result.scalar_one_or_none()
+        return room
 
     async def update_room(self, room_id: UUID, data: dict, user: User) -> Room:
         """Обновить комнату"""

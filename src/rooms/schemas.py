@@ -7,11 +7,13 @@ from src.rooms.enum import RoomStatus, RoomRole
 # схемы для комнат
 class RoomCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
+    image_id: Optional[int] = Field(None, description="ID изображения для комнаты")
 
 
 class RoomUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     status: Optional[RoomStatus] = None
+    image_id: Optional[int] = Field(None, description="ID изображения для комнаты")
 
 
 class RoomListItem(BaseModel):
@@ -20,6 +22,7 @@ class RoomListItem(BaseModel):
     status: RoomStatus
     owner_id: UUID
     created_at: datetime
+    image_id: Optional[int] = None
 
     users_count: int = 0
     maps_count: int = 0
@@ -35,6 +38,7 @@ class RoomResponse(BaseModel):
     created_at: datetime
     updated_at: Optional[datetime] = None
     status: RoomStatus = RoomStatus.PAUSED
+    image_id: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)
 
