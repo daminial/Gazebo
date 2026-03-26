@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     SIGNED_URL_EXPIRY_SECONDS: int = 3600
     MAX_SIGNED_URL_EXPIRY: int = 86400
 
+    LIVEKIT_API_KEY: str
+    LIVEKIT_API_SECRET: str
+    LIVEKIT_URL: str
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

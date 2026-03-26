@@ -1,0 +1,37 @@
+.media-controls {
+  display: flex;
+  gap: 8px;
+  padding: 10px;
+  background: #1a1a2e;
+  border-radius: 8px;
+  justify-content: center;
+}
+
+.media-btn {
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: #3a3a5e;
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.media-btn:hover:not(:disabled) {
+  background: #4a4a7e;
+  transform: scale(1.05);
+}
+
+.media-btn.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.media-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

@@ -1,0 +1,298 @@
+.company-detail {
+  min-height: 100vh;
+  background-color: #FDF8E8;
+}
+
+/* Header */
+.company-header {
+  background-color: #FDF8E8;
+  padding: 15px 0;
+}
+
+.company-header .logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 24px;
+  font-weight: bold;
+  color: #333;
+}
+
+.logo-icon {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #333;
+}
+
+/* Main Content */
+.company-main {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 30px 20px;
+  display: grid;
+  grid-template-columns: 1fr 350px;
+  gap: 30px;
+}
+
+/* Left Column */
+.company-left {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Company Banner */
+.company-banner {
+  width: 100%;
+}
+
+.company-logo-large {
+  width: 100%;
+  height: 200px;
+  object-fit: contain;
+  background: #fff;
+  border-radius: 8px;
+}
+
+/* Company Name */
+.company-name {
+  text-align: center;
+  font-size: 24px;
+  color: #333;
+  margin: 0;
+}
+
+/* Action Buttons */
+.company-actions {
+  display: flex;
+  gap: 15px;
+  justify-content: space-between;
+}
+
+.btn {
+  padding: 12px 24px;
+  font-size: 16px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  font-weight: 500;
+}
+
+.btn-launch {
+  background: #A0704A;
+  color: #fff;
+  flex: 1;
+  max-width: 200px;
+}
+
+.btn-launch:hover {
+  opacity: 0.9;
+}
+
+.btn-settings {
+  background: #6B7D8A;
+  color: #fff;
+  flex: 1;
+  max-width: 200px;
+}
+
+.btn-settings:hover {
+  opacity: 0.9;
+}
+
+/* Next Game Section */
+.next-game-section {
+  margin-top: 20px;
+}
+
+.next-game-title {
+  font-size: 18px;
+  color: #5A6B3A;
+  margin-bottom: 15px;
+}
+
+.datetime-picker {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.datetime-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex: 1;
+}
+
+.datetime-group label {
+  font-size: 14px;
+  color: #666;
+  font-weight: 500;
+}
+
+.datetime-input {
+  padding: 10px 12px;
+  border: 2px solid #D4C4A8;
+  border-radius: 8px;
+  font-size: 16px;
+  background: #fff;
+  color: #333;
+  transition: border-color 0.2s;
+}
+
+.datetime-input:focus {
+  outline: none;
+  border-color: #5A6B3A;
+}
+
+.selected-datetime {
+  background: #F5F0E0;
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: 1px solid #D4C4A8;
+}
+
+.selected-datetime p {
+  margin: 0;
+  color: #5A6B3A;
+  font-weight: 500;
+}
+
+/* Description Section */
+.description-section {
+  margin-top: 20px;
+}
+
+.description-placeholder {
+  color: #888;
+  font-style: italic;
+  cursor: pointer;
+  padding: 15px;
+  border: 1px dashed #D4C4A8;
+  border-radius: 8px;
+  background: #fff;
+  transition: all 0.2s;
+}
+
+.description-placeholder:hover {
+  border-color: #A0704A;
+  background: #FDF8E8;
+}
+
+/* Right Column */
+.company-right {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+/* Author Section */
+.author-section {
+  background: #5A6B3A;
+  padding: 20px;
+  border-radius: 12px;
+  color: #FDF8E8;
+}
+
+.section-label {
+  font-size: 14px;
+  color: rgba(253, 248, 232, 0.8);
+  margin-bottom: 10px;
+}
+
+.author-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.player-avatar {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: #333;
+  flex-shrink: 0;
+}
+
+.player-avatar.empty {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.player-name {
+  font-size: 18px;
+  color: #FDF8E8;
+}
+
+/* Players Section */
+.players-section {
+  background: #5A6B3A;
+  padding: 20px;
+  border-radius: 12px;
+  color: #FDF8E8;
+  border: 2px solid #4A5B2A;
+}
+
+.players-header {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.players-count {
+  font-size: 16px;
+  color: rgba(253, 248, 232, 0.9);
+}
+
+.btn-invite {
+  background: rgba(255, 255, 255, 0.2);
+  color: #FDF8E8;
+  padding: 8px 16px;
+  font-size: 14px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-left: auto;
+  transition: background-color 0.2s;
+}
+
+.btn-invite:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.players-list {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .company-main {
+    grid-template-columns: 1fr;
+  }
+
+  .company-actions {
+    flex-direction: column;
+  }
+
+  .btn-launch,
+  .btn-settings {
+    max-width: 100%;
+  }
+
+  .datetime-picker {
+    flex-direction: column;
+  }
+
+  .players-header {
+    flex-wrap: wrap;
+  }
+
+  .btn-invite {
+    margin-left: 0;
+    width: 100%;
+  }
+}
