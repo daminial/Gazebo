@@ -140,6 +140,13 @@ class RoomService:
         room_user.room_role = new_role
         return room_user
 
+    async def get_user_role(self, room_id: UUID, user_id: UUID) -> Optional[str]:
+        """Возвращает роль пользователя в комнате"""
+        result = await self.db.execute(
+            select(RoomUsers.room_role).filter_by(room_id=room_id, user_id=user_id)
+        )
+        return result.scalar_one()
+
     async def get_room_users(self, room_id: UUID, role: Optional[RoomRole] = None) -> List[RoomUserListItem]:
         """Получить всех участников комнаты, опционально фильтруя по роли"""
         query = select(RoomUsers).options(

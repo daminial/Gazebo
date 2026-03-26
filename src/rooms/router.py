@@ -5,17 +5,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 
 from src.bestiary.schemas import RoomTokenResponse, RoomTokenCreate
+from src.core.config import settings
 from src.core.database import get_db
 from src.auth.dependencies import get_current_user
 from src.auth.models import User
 from src.core.storage.models import Image
 from src.map.schemas import RoomMapCreate
 from src.rooms.enum import RoomRole
+from src.rooms.livekit import generate_livekit_token
 from src.rooms.service import RoomService
 from src.rooms.schemas import (RoomResponse, RoomCreate, RoomUpdate, RoomUserListItem,
                                RoomUserResponse, RoomUserUpdate, RoomMapBasicInfo, RoomTokenBasicInfo,
                                TokenPositionUpdate, TokenHPUpdate, TokenConditionsUpdate, TokenVisibilityUpdate,
-                               RoomMapInRoom)
+                               RoomMapInRoom, LiveKitTokenResponse)
 
 router = APIRouter(prefix="/rooms", tags=["rooms"], redirect_slashes=False)
 
@@ -123,6 +125,31 @@ async def add_user_to_room(
     room_user = await service.add_user_to_room(room_id, user_to_add, role)
     return room_user
 
+
+@router.post("/{room_id}/livekit-token", response_model=LiveKitTokenResponse)
+async def get_livekit_token(
+        room_id: UUID,
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_user)
+):
+    service = RoomService(db)
+    role = await service.get_user_role(room_id, current_user.id)
+
+    if not role:
+        raise HTTPException(403, "Вы не в этой комнате")
+
+    token = generate_livekit_token(
+        room_id=room_id,
+        user_id=current_user.id,
+        username=current_user.username,
+        role=role
+    )
+
+    return LiveKitTokenResponse(
+        token=token,
+        url=settings.LIVEKIT_URL,
+        room_id=room_id
+    )
 
 @router.get("/{room_id}/users", response_model=List[RoomUserListItem])
 async def get_room_users(

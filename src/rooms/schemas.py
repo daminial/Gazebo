@@ -66,6 +66,12 @@ class RoomUserResponse(RoomUserBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+class LiveKitTokenResponse(BaseModel):
+    token: str
+    url: str
+    room_id: UUID
+
+
 class RoomUserListItem(BaseModel):
     user_id: UUID
     username: str
