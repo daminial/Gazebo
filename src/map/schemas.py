@@ -3,6 +3,8 @@ from uuid import UUID
 from datetime import datetime
 from typing import Optional
 
+from src.core.storage.schemas import ImageResponse
+
 
 class MapTemplateBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
@@ -68,7 +70,7 @@ class RoomMapBase(BaseModel):
 
 
 class RoomMapCreate(RoomMapBase):
-    template_id: int = Field(..., gt=0)
+    template_id: Optional[int] = Field(None, gt=0)
 
 
 class RoomMapUpdate(BaseModel):
@@ -84,6 +86,7 @@ class RoomMapResponse(RoomMapBase):
     updated_at: datetime
 
     template: Optional['MapTemplateResponse'] = None
+    image: Optional['ImageResponse'] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -97,5 +100,8 @@ class RoomMapListItem(BaseModel):
 
     template_name: Optional[str] = None
     template_image_id: Optional[int] = None
+
+    image_id: Optional[int] = None
+    image_url: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)

@@ -81,28 +81,6 @@ class RoomUserListItem(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-# схемы для карт
-class RoomMapBasicInfo(BaseModel):
-    id: int
-    name_in_room: str
-    template_id: Optional[int]
-
-    image_id: Optional[int] = None
-    template_name: Optional[str] = None
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class RoomMapCreate(BaseModel):
-    template_id: int
-    name_in_room: str
-
-
-class RoomMapInRoom(RoomMapBasicInfo):
-    created_at: datetime
-    updated_at: Optional[datetime] = None
-
-
 # схемы для токенов
 class RoomTokenBasicInfo(BaseModel):
     id: int

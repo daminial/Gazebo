@@ -2,20 +2,24 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 from typing import Optional, List
-from fastapi import HTTPException
-from sqlalchemy.orm import joinedload
+from fastapi import HTTPException, UploadFile
+from sqlalchemy.orm import joinedload, selectinload
 
 from src.bestiary.schemas import RoomTokenCreate
+from src.core.storage.models import Image
+from src.core.storage.s3Client import S3Client
+from src.core.storage.service import MediaService
+from src.map.schemas import RoomMapListItem
 from src.rooms.exceptions import RoomNotFoundError, RoomPermissionError, RoomAccessError
 from src.rooms.models import Room, RoomUsers, RoomRole
 from src.auth.models import User
-from src.map.models import RoomMap
+from src.map.models import RoomMap, MapTemplate
 from src.bestiary.models import RoomToken, CreatureTemplate
 from src.rooms.schemas import RoomUserListItem
 
-
 class RoomService:
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: AsyncSession, media_service: Optional[MediaService] = None):
+        self.media_service = media_service
         self.db = db
 
     async def create_room(self, name: str, image_id: int, user: User) -> Room:
@@ -170,23 +174,85 @@ class RoomService:
         ]
 
     # Работа с картами
-    async def add_map_to_room(self, room_id: UUID, template_id: int, name: str) -> RoomMap:
-        """Добавить карту в комнату из шаблона"""
+    async def add_map_to_room(
+            self,
+            room_id: UUID,
+            user_id: UUID,
+            name: str,
+            file: Optional[UploadFile] = None,
+            template_id: Optional[UUID] = None,
+            s3_client: Optional[S3Client] = None
+    ) -> RoomMap:
+        """Универсальный метод добавления карты"""
+
+        if not template_id and not file:
+            raise ValueError("Требуется template_id или файл изображения")
+        if template_id and file:
+            raise ValueError("Нельзя указать и template_id, и файл")
+
+        if not await self.is_dm(room_id, user_id):
+            raise PermissionError("Только DM может добавлять карты")
+
+        image_id = None
+        if file:
+            if not s3_client:
+                raise ValueError("S3 client required for file upload")
+            image_id = await self._upload_map_image(
+                file=file,
+                user_id=user_id,
+                caption=name,
+                s3_client=s3_client
+            )
+
         room_map = RoomMap(
             room_id=room_id,
             template_id=template_id,
+            image_id=image_id,
             name_in_room=name
         )
         self.db.add(room_map)
+        await self.db.flush()
 
-        return room_map
-
-    async def get_room_maps(self, room_id: UUID) -> List[RoomMap]:
-        """Получить все карты комнаты"""
         result = await self.db.execute(
-            select(RoomMap).filter_by(room_id=room_id)
+            select(RoomMap)
+            .filter_by(id=room_map.id)
+            .options(
+                selectinload(RoomMap.template).selectinload(MapTemplate.image),
+                selectinload(RoomMap.image).selectinload(Image.thumbnail)
+            )
         )
-        return list(result.scalars().all())
+
+        return result.scalar_one()
+
+    async def get_room_maps(self, room_id: UUID) -> List[RoomMapListItem]:
+        result = await self.db.execute(
+            select(RoomMap)
+            .filter_by(room_id=room_id)
+            .options(
+                selectinload(RoomMap.image),
+                selectinload(RoomMap.template).selectinload(MapTemplate.image)
+            )
+        )
+        room_maps = list(result.scalars().all())
+
+        items = []
+        for room_map in room_maps:
+            item = RoomMapListItem.model_validate(room_map)
+
+            if self.media_service:
+                if room_map.image:
+                    item.image_url = await self.media_service.get_image_url(room_map.image)
+                elif room_map.template and room_map.template.image:
+                    item.image_url = await self.media_service.get_image_url(room_map.template.image)
+
+            if room_map.template:
+                item.template_name = room_map.template.name
+                if room_map.template.image:
+                    item.template_image_id = room_map.template.image.id
+
+            items.append(item)
+
+        return items
 
     async def remove_map_from_room(self, map_id: int):
         """Удалить карту из комнаты"""

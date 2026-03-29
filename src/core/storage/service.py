@@ -10,7 +10,7 @@ from src.core.storage.schemas import (
     MediaType
 )
 from uuid import UUID
-from typing import BinaryIO, Union
+from typing import BinaryIO, Union, Optional
 
 
 class MediaService:
@@ -94,3 +94,22 @@ class MediaService:
         unique_id = str(uuid.uuid4())[:8]
 
         return f"{file_type}s/{today.year}/{today.month:02d}/{today.day:02d}/{user_id}_{clean_filename}_{unique_id}.{file_data.extension}"
+
+    async def get_image_url(self, image: Optional[Image]) -> str:
+        """Получить публичный URL изображения"""
+        if not isinstance(image, Image):
+            return ""
+
+        if image.storage_provider == "s3":
+            public_url = await self.s3.get_public_url(image.storage_key)
+            if public_url and not public_url.startswith("http://localhost"):
+                return public_url
+        
+        return f"/api/media/{image.id}"
+
+    async def get_presigned_image_url(self, image: Optional[Image], expires: int = 3600) -> Optional[str]:
+        """Получить подписанный URL изображения"""
+        if not image or image.storage_provider != "s3":
+            return None
+
+        return await self.s3.get_presigned_url(image.storage_key, expires)

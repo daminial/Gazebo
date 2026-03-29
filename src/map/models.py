@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, func
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, func, CheckConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
 from src.core.database import Base
@@ -33,10 +33,22 @@ class RoomMap(Base):
     template_id = Column(Integer,
                          ForeignKey("map_templates.id", ondelete="SET NULL"),
                          nullable=True)
+    image_id = Column(Integer,
+                      ForeignKey("images.id", ondelete="SET NULL"),
+                      nullable=True)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now())
 
     name_in_room = Column(String, nullable=False)
 
+    image = relationship("Image", uselist=False)
     room = relationship("Room", back_populates="maps")
     template = relationship("MapTemplate", back_populates="room_instances")
+
+    __table_args__ = (
+        CheckConstraint(
+            '(template_id IS NOT NULL) OR (image_id IS NOT NULL)',
+            name='check_template_or_image'
+        ),
+    )

@@ -18,9 +18,18 @@ class Playlist(Base):
                             nullable=True)
 
     cover_image = relationship("Image")
-    tracks = relationship("PlaylistTrack", back_populates="playlist",
-                          cascade="all, delete-orphan")
-    room_players = relationship("RoomAudioPlayer", back_populates="playlist")
+    tracks = relationship("PlaylistTrack",
+                          back_populates="playlist",
+                          cascade="all, delete-orphan",
+                          order_by="PlaylistTrack.position")
+
+    room_players = relationship("RoomAudioPlayer",
+                                back_populates="playlist",
+                                foreign_keys="RoomAudioPlayer.current_playlist_id")
+
+    @property
+    def audio_files(self):
+        return [track.audio for track in self.tracks]
 
 
 class PlaylistTrack(Base):
@@ -54,13 +63,12 @@ class PlaylistTrack(Base):
 
 class RoomAudioPlayer(Base):
     """Аудиоплеер комнаты"""
-    __tablename__ = "room_audio_players"
+    __tablename__ = "room_audio_player"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     room_id = Column(UUID(as_uuid=True),
                      ForeignKey("rooms.id", ondelete="CASCADE"),
-                     nullable=False,
-                     unique=True)
+                     nullable=False, unique=True)
 
     current_playlist_id = Column(Integer,
                                  ForeignKey("playlists.id", ondelete="SET NULL"),
@@ -78,7 +86,14 @@ class RoomAudioPlayer(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
-    room = relationship("Room", back_populates="audio_player")
-    playlist = relationship("Playlist", foreign_keys=[current_playlist_id],
+    room = relationship(
+        "src.rooms.models.Room",
+        back_populates="audio_player"
+    )
+
+    playlist = relationship("Playlist",
+                            foreign_keys=[current_playlist_id],
                             back_populates="room_players")
-    current_track = relationship("Audio", foreign_keys=[current_track_id])
+
+    current_track = relationship("Audio",
+                                 foreign_keys=[current_track_id])

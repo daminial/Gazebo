@@ -1,6 +1,8 @@
+from io import BytesIO
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, Form
+from fastapi.params import File
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 
@@ -9,15 +11,19 @@ from src.core.config import settings
 from src.core.database import get_db
 from src.auth.dependencies import get_current_user
 from src.auth.models import User
+from src.core.storage.dependencies import get_s3_client
 from src.core.storage.models import Image
-from src.map.schemas import RoomMapCreate
+from src.core.storage.s3Client import S3Client
+from src.core.storage.schemas import ImageCreate, MediaType
+from src.core.storage.service import MediaService
+from src.map.schemas import RoomMapCreate, RoomMapResponse, RoomMapListItem
 from src.rooms.enum import RoomRole
 from src.rooms.livekit import generate_livekit_token
 from src.rooms.service import RoomService
 from src.rooms.schemas import (RoomResponse, RoomCreate, RoomUpdate, RoomUserListItem,
-                               RoomUserResponse, RoomUserUpdate, RoomMapBasicInfo, RoomTokenBasicInfo,
+                               RoomUserResponse, RoomUserUpdate, RoomTokenBasicInfo,
                                TokenPositionUpdate, TokenHPUpdate, TokenConditionsUpdate, TokenVisibilityUpdate,
-                               RoomMapInRoom, LiveKitTokenResponse)
+                               LiveKitTokenResponse)
 
 router = APIRouter(prefix="/rooms", tags=["rooms"], redirect_slashes=False)
 
@@ -202,35 +208,48 @@ async def remove_user_from_room(
 
 
 # Управление картами
-@router.post("/{room_id}/maps", response_model=RoomMapInRoom)
+@router.post("/{room_id}/maps", response_model=RoomMapResponse, status_code=201)
 async def add_map_to_room(
         room_id: UUID,
-        map_data: RoomMapCreate,
+        file: Optional[UploadFile] = File(None),
+        template_id: Optional[int] = Form(None),
+        name_in_room: str = Form(...),
         db: AsyncSession = Depends(get_db),
-        current_user: User = Depends(get_current_user)
+        current_user: User = Depends(get_current_user),
+        s3_client: S3Client = Depends(get_s3_client)
 ):
-    """Добавить карту в комнату"""
-    service = RoomService(db)
+    """Добавить карту в комнату (файл или template)"""
 
-    if not await service.is_dm(room_id, current_user.id):
-        raise HTTPException(403, "Только DM может добавлять карты")
+    room_service = RoomService(db)
 
-    room_map = await service.add_map_to_room(
-        room_id=room_id,
-        template_id=map_data.template_id,
-        name=map_data.name_in_room
-    )
+    try:
+        room_map = await room_service.add_map_to_room(
+            room_id=room_id,
+            user_id=current_user.id,
+            name=name_in_room,
+            file=file,
+            template_id=template_id,
+            s3_client=s3_client
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except PermissionError as e:
+        raise HTTPException(403, str(e))
+
     return room_map
 
 
-@router.get("/{room_id}/maps", response_model=List[RoomMapBasicInfo])
+@router.get("/{room_id}/maps", response_model=List[RoomMapListItem])
 async def get_room_maps(
         room_id: UUID,
         db: AsyncSession = Depends(get_db),
-        current_user: User = Depends(get_current_user)
+        current_user: User = Depends(get_current_user),
+        s3_client: S3Client = Depends(get_s3_client)
 ):
     """Получить все карты в комнате"""
-    service = RoomService(db)
+
+    media_service = MediaService(s3_client, db)
+    service = RoomService(db, media_service)
 
     if not await service.is_in_room(room_id, current_user.id):
         raise HTTPException(403, "Вы не в этой комнате")
