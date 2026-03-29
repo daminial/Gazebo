@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext.jsx'
 import Layout from './components/Layout.jsx'
+import GameLayout from './components/GameLayout.jsx'
 import Login from './pages/Login.jsx'
 import Register from './pages/Register.jsx'
 import Home from './pages/Home.jsx'
@@ -61,11 +62,6 @@ function AppRoutes() {
             <CompanyDetail />
           </PrivateRoute>
         } />
-        <Route path="game/:id" element={
-          <PrivateRoute>
-            <GameBoard />
-          </PrivateRoute>
-        } />
         <Route path="companies/search" element={
           <PrivateRoute>
             <CompaniesSearch />
@@ -77,6 +73,13 @@ function AppRoutes() {
         <Route path="profile" element={
           <PrivateRoute>
             <Profile />
+          </PrivateRoute>
+        } />
+      </Route>
+      <Route path="/game" element={<GameLayout />}>
+        <Route path=":id" element={
+          <PrivateRoute>
+            <GameBoard />
           </PrivateRoute>
         } />
       </Route>

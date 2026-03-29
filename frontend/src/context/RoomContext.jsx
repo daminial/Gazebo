@@ -40,7 +40,33 @@ export function RoomProvider({ roomId, children }) {
           roomsAPI.getTokens(roomId),
         ]);
 
-        setMaps(mapsRes.data);
+        console.log('Maps from server:', mapsRes.data);
+
+        // Добавляем /api префикс к image_url если нужно
+        const mapsWithImages = mapsRes.data.map(map => {
+          let imageUrl = null;
+          
+          if (map.image_url) {
+            // Если URL полный (http://...), оставляем как есть
+            // Если относительный (/media/...), добавляем /api
+            imageUrl = map.image_url.startsWith('http') 
+              ? map.image_url 
+              : (map.image_url.startsWith('/api') 
+                  ? map.image_url 
+                  : `/api${map.image_url}`);
+          } else if (map.template_image_id) {
+            imageUrl = `/api/media/${map.template_image_id}`;
+          }
+          
+          console.log(`Map ${map.id}: image_url=${map.image_url}, template_image_id=${map.template_image_id}, final imageUrl=${imageUrl}`);
+          
+          return {
+            ...map,
+            image_url: imageUrl
+          };
+        });
+
+        setMaps(mapsWithImages);
         setTokens(tokensRes.data);
 
         // Выбираем первую карту активной
@@ -167,6 +193,7 @@ export function RoomProvider({ roomId, children }) {
     localParticipant,
 
     // Комната
+    roomId,
     maps,
     tokens,
     activeMapId,
@@ -177,10 +204,11 @@ export function RoomProvider({ roomId, children }) {
     error,
 
     // Методы
+    setMaps,
+    setTokens,
     sendTokenMove,
     sendChatMessage,
     sendDiceRoll,
-    setTokens,
   };
 
   return <RoomContext.Provider value={value}>{children}</RoomContext.Provider>;

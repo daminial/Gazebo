@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { RoomProvider, useRoom } from '../context/RoomContext'
 import { VideoGrid } from '../components/Room/VideoGrid'
 import { ChatPanel } from '../components/Room/ChatPanel'
+import { MapSelector } from '../components/Room/MapSelector'
 import './GameBoard.css'
 
 // Внутренний компонент для контента с доступом к контексту
@@ -86,12 +87,9 @@ function GameBoardContent() {
       <main className="canvas-area">
         {/* Map Container */}
         <div className="map-container">
+          <MapSelector />
           <div className={`map-wrapper ${showGrid ? 'show-grid' : ''}`}>
-            <img
-              src="https://placehold.co/1200x800/2a1a1a/ff4400?text=Game+Map"
-              alt="Game Map"
-              className="map-image"
-            />
+            <ActiveMapImage />
             <div className="grid-overlay"></div>
           </div>
 
@@ -206,6 +204,34 @@ function GameBoardContent() {
         )}
       </div>
     </div>
+  )
+}
+
+// Компонент отображения активной карты
+function ActiveMapImage() {
+  const { maps, activeMapId } = useRoom()
+
+  const activeMap = maps.find(m => m.id === activeMapId)
+
+  // image_url уже должен быть с /api префиксом из RoomContext
+  const imageUrl = activeMap?.image_url
+
+  if (!activeMap || !imageUrl) {
+    return (
+      <img
+        src="https://placehold.co/1200x800/2a1a1a/ff4400?text=Game+Map"
+        alt="Game Map"
+        className="map-image"
+      />
+    )
+  }
+
+  return (
+    <img
+      src={imageUrl}
+      alt={activeMap.name_in_room || activeMap.template_name || 'Карта'}
+      className="map-image"
+    />
   )
 }
 

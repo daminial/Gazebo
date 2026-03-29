@@ -70,6 +70,19 @@ export const roomsAPI = {
   updateHP: (id, data) => api.patch(`/rooms/${id}/hp`, data),
   getLiveKitToken: (id) => api.post(`/rooms/${id}/livekit-token`),
   getMaps: (id) => api.get(`/rooms/${id}/maps`),
+  addMap: (id, templateId, nameInRoom) => {
+    const formData = new FormData()
+    formData.append('name_in_room', nameInRoom)
+    if (templateId) {
+      formData.append('template_id', templateId)
+    }
+    return api.post(`/rooms/${id}/maps`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+  },
+  setActiveMap: (id, mapId) => api.patch(`/rooms/${id}/maps/${mapId}/active`),
   getTokens: (id) => api.get(`/rooms/${id}/tokens`),
   updateTokenPosition: (id, token_id, data) => api.patch(`/rooms/${id}/tokens/${token_id}/position`, data),
 }
@@ -80,6 +93,32 @@ export const mediaAPI = {
       'Content-Type': 'multipart/form-data'
     }
   }),
+}
+
+export const mapTemplatesAPI = {
+  create: (formData) => {
+    const data = new FormData()
+    data.append('file', formData.get('file'))
+    data.append('name', formData.get('name'))
+    const description = formData.get('description')
+    if (description) {
+      data.append('description', description)
+    }
+    const isPublic = formData.get('is_public')
+    data.append('is_public', isPublic === true || isPublic === 'true' ? 'true' : 'false')
+    const caption = formData.get('caption')
+    if (caption) {
+      data.append('caption', caption)
+    }
+    return api.post('/map-templates', data, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+  },
+  getMy: () => api.get('/map-templates/my'),
+  getById: (id) => api.get(`/map-templates/${id}`),
+  delete: (id) => api.delete(`/map-templates/${id}`),
 }
 
 export const bestiaryAPI = {
