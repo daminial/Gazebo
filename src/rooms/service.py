@@ -1,3 +1,5 @@
+from io import BytesIO
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
@@ -8,9 +10,10 @@ from sqlalchemy.orm import joinedload, selectinload
 from src.bestiary.schemas import RoomTokenCreate
 from src.core.storage.models import Image
 from src.core.storage.s3Client import S3Client
+from src.core.storage.schemas import ImageCreate, MediaType
 from src.core.storage.service import MediaService
 from src.map.schemas import RoomMapListItem
-from src.rooms.exceptions import RoomNotFoundError, RoomPermissionError, RoomAccessError
+from src.rooms.exceptions import RoomPermissionError, RoomAccessError
 from src.rooms.models import Room, RoomUsers, RoomRole
 from src.auth.models import User
 from src.map.models import RoomMap, MapTemplate
@@ -21,6 +24,37 @@ class RoomService:
     def __init__(self, db: AsyncSession, media_service: Optional[MediaService] = None):
         self.media_service = media_service
         self.db = db
+
+    async def _upload_image_file(
+            self,
+            file: UploadFile,
+            user_id: UUID,
+            caption: str,
+            s3_client: S3Client
+    ) -> int:
+        """Загрузить файл изображения через MediaService и вернуть ID"""
+        file_data = await file.read()
+        file_bytes = BytesIO(file_data)
+
+        image_create = ImageCreate(
+            filename=file.filename.rsplit('.', 1)[0],
+            extension=file.filename.split('.')[-1],
+            mime_type=file.content_type,
+            file_size=len(file_data),
+            type=MediaType.IMAGE,
+            is_public=True,
+            caption=caption,
+            uploaded_by=user_id,
+        )
+
+        media_service = MediaService(s3_client=s3_client, db_session=self.db)
+        image_response = await media_service.upload_file(
+            file=file_bytes,
+            file_data=image_create,
+            user_id=user_id
+        )
+
+        return image_response.id
 
     async def create_room(self, name: str, image_id: int, user: User) -> Room:
         """Создать новую комнату"""
@@ -197,7 +231,7 @@ class RoomService:
         if file:
             if not s3_client:
                 raise ValueError("S3 client required for file upload")
-            image_id = await self._upload_map_image(
+            image_id = await self._upload_image_file(
                 file=file,
                 user_id=user_id,
                 caption=name,

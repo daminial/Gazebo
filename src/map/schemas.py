@@ -88,6 +88,10 @@ class RoomMapResponse(RoomMapBase):
     template: Optional['MapTemplateResponse'] = None
     image: Optional['ImageResponse'] = None
 
+    image_url: Optional[str] = None
+    template_name: Optional[str] = None
+    template_image_id: Optional[int] = None
+    
     model_config = ConfigDict(from_attributes=True)
 
 

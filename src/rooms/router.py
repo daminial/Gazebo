@@ -221,6 +221,7 @@ async def add_map_to_room(
     """Добавить карту в комнату (файл или template)"""
 
     room_service = RoomService(db)
+    media_service = MediaService(s3_client, db)
 
     try:
         room_map = await room_service.add_map_to_room(
@@ -236,7 +237,16 @@ async def add_map_to_room(
     except PermissionError as e:
         raise HTTPException(403, str(e))
 
-    return room_map
+    response = RoomMapResponse.model_validate(room_map)
+    if room_map.image:
+        response.image_url = await media_service.get_image_url(room_map.image)
+    elif room_map.template and room_map.template.image:
+        response.image_url = await media_service.get_image_url(room_map.template.image)
+        response.template_name = room_map.template.name
+        response.template_image_id = room_map.template.image.id
+
+    return response
+
 
 
 @router.get("/{room_id}/maps", response_model=List[RoomMapListItem])
