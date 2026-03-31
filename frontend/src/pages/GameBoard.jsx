@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { RoomProvider, useRoom } from '../context/RoomContext'
 import { VideoGrid } from '../components/Room/VideoGrid'
 import { ChatPanel } from '../components/Room/ChatPanel'
+import { ImagesPanel } from '../components/Room/ImagesPanel'
 import { MapSelector } from '../components/Room/MapSelector'
 import './GameBoard.css'
 
@@ -152,12 +153,7 @@ function GameBoardContent() {
         <div className="sidebar-content">
           {activeTab === 'chat' && <ChatPanel />}
 
-          {activeTab === 'images' && (
-            <div className="tab-placeholder">
-              <h3>Изображения</h3>
-              <p>Загруженные изображения будут здесь</p>
-            </div>
-          )}
+          {activeTab === 'images' && <ImagesPanel />}
 
           {activeTab === 'music' && (
             <div className="tab-placeholder">

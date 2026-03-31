@@ -26,7 +26,6 @@ export default function CreateRoomModal({ isOpen, onClose }) {
     try {
       let imageId = null
 
-      // Если выбрано изображение, загружаем его сначала
       if (imageFile) {
         const formData = new FormData()
         formData.append('file', imageFile)
@@ -35,7 +34,6 @@ export default function CreateRoomModal({ isOpen, onClose }) {
         imageId = imageData.id
       }
 
-      // Создаём комнату с image_id или без
       const { data: roomData } = await roomsAPI.create(roomName, imageId)
       onClose()
       navigate(`/companies/${roomData.id}`)

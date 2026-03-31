@@ -45,160 +45,23 @@
   background: rgba(90, 107, 58, 1);
 }
 
-/* Modal */
-.modal-overlay {
-  position: fixed;
-  top: 0;
+/* Выпадающий список карт */
+.maps-list-dropdown {
+  position: absolute;
+  top: 100%;
   left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.8);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.map-upload-modal {
-  background: #2a2a3e;
-  padding: 25px;
-  border-radius: 12px;
-  min-width: 400px;
-  max-width: 500px;
-  color: #FDF8E8;
-}
-
-.map-upload-modal h3 {
-  margin: 0 0 20px 0;
-  color: #5A6B3A;
-  font-size: 20px;
-}
-
-.form-group {
-  margin-bottom: 20px;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 8px;
-  font-size: 14px;
-  opacity: 0.8;
-}
-
-.form-group input[type="text"] {
-  width: 100%;
-  padding: 10px 12px;
-  border: 2px solid #3a3a5e;
-  border-radius: 8px;
-  background: #1a1a2e;
-  color: #FDF8E8;
-  font-size: 14px;
-  box-sizing: border-box;
-}
-
-.form-group input[type="text"]:focus {
-  outline: none;
-  border-color: #5A6B3A;
-}
-
-.file-upload {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.file-upload input[type="file"] {
-  flex: 1;
-  color: #FDF8E8;
-}
-
-.file-upload input[type="file"]::-webkit-file-upload-button {
-  background: #5A6B3A;
-  border: none;
-  color: #FDF8E8;
-  padding: 8px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  margin-right: 10px;
-}
-
-.file-name {
-  font-size: 13px;
-  opacity: 0.8;
-}
-
-.image-preview {
-  margin: 15px 0;
-  max-height: 200px;
-  overflow: hidden;
-  border-radius: 8px;
-  background: #1a1a2e;
-}
-
-.image-preview img {
-  width: 100%;
-  height: auto;
-  display: block;
-}
-
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  margin-top: 20px;
-}
-
-.btn-cancel,
-.btn-upload {
-  padding: 10px 20px;
-  border-radius: 8px;
-  border: none;
-  cursor: pointer;
-  font-size: 14px;
-  transition: all 0.2s;
-}
-
-.btn-cancel {
-  background: rgba(255, 255, 255, 0.1);
-  color: #FDF8E8;
-}
-
-.btn-cancel:hover {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-.btn-upload {
-  background: #5A6B3A;
-  color: #FDF8E8;
-}
-
-.btn-upload:hover:not(:disabled) {
-  background: #6b7d4a;
-}
-
-.btn-upload:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* Maps list */
-.maps-list {
-  margin-top: 15px;
-  background: rgba(0, 0, 0, 0.7);
+  margin-top: 10px;
+  background: rgba(0, 0, 0, 0.9);
   padding: 15px;
   border-radius: 8px;
-  color: #fff;
-}
-
-.maps-list h4 {
-  margin: 0 0 15px 0;
-  font-size: 14px;
-  opacity: 0.8;
+  min-width: 300px;
+  max-width: 500px;
+  z-index: 101;
 }
 
 .maps-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
   gap: 10px;
 }
 
@@ -266,81 +129,4 @@
   align-items: center;
   justify-content: center;
   font-size: 12px;
-}
-
-/* Templates modal */
-.map-templates-modal {
-  background: #2a2a3e;
-  padding: 25px;
-  border-radius: 12px;
-  min-width: 500px;
-  max-width: 700px;
-  max-height: 80vh;
-  overflow-y: auto;
-  color: #FDF8E8;
-}
-
-.map-templates-modal h3 {
-  margin: 0 0 20px 0;
-  color: #5A6B3A;
-  font-size: 20px;
-}
-
-.no-templates {
-  text-align: center;
-  opacity: 0.7;
-  padding: 40px 20px;
-}
-
-.templates-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 15px;
-  margin-bottom: 20px;
-}
-
-.template-card {
-  position: relative;
-  aspect-ratio: 16/9;
-  background: #1a1a2e;
-  border-radius: 8px;
-  overflow: hidden;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: 2px solid transparent;
-}
-
-.template-card:hover {
-  border-color: #5A6B3A;
-  transform: scale(1.05);
-}
-
-.template-card img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.template-placeholder {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 32px;
-  background: #2a2a3e;
-}
-
-.template-name {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: rgba(0, 0, 0, 0.8);
-  padding: 4px 8px;
-  font-size: 11px;
-  text-align: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }

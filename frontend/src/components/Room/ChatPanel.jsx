@@ -37,7 +37,6 @@ export function ChatPanel() {
   return (
     <div className="chat-panel">
       <div className="chat-header">
-        <h4>Чат</h4>
         {!isConnected && <span className="connection-status">⚠ Нет подключения</span>}
       </div>
 

@@ -70,11 +70,14 @@ export const roomsAPI = {
   updateHP: (id, data) => api.patch(`/rooms/${id}/hp`, data),
   getLiveKitToken: (id) => api.post(`/rooms/${id}/livekit-token`),
   getMaps: (id) => api.get(`/rooms/${id}/maps`),
-  addMap: (id, templateId, nameInRoom) => {
+  addMap: (id, templateId, nameInRoom, file = null) => {
     const formData = new FormData()
     formData.append('name_in_room', nameInRoom)
     if (templateId) {
       formData.append('template_id', templateId)
+    }
+    if (file) {
+      formData.append('file', file)
     }
     return api.post(`/rooms/${id}/maps`, formData, {
       headers: {
@@ -82,6 +85,7 @@ export const roomsAPI = {
       }
     })
   },
+  deleteMap: (roomId, mapId) => api.delete(`/rooms/${roomId}/maps/${mapId}`),
   setActiveMap: (id, mapId) => api.patch(`/rooms/${id}/maps/${mapId}/active`),
   getTokens: (id) => api.get(`/rooms/${id}/tokens`),
   updateTokenPosition: (id, token_id, data) => api.patch(`/rooms/${id}/tokens/${token_id}/position`, data),

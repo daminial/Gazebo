@@ -240,10 +240,9 @@
 /* Right Sidebar */
 .sidebar-right {
   width: 350px;
-  background: #2a2a3e;
+  background: #FDF8E8;
   display: flex;
   flex-direction: column;
-  border-radius: 12px 0 0 12px;
   overflow: hidden;
 }
 
@@ -252,8 +251,8 @@
   background: #5A6B3A;
   padding: 10px;
   gap: 5px;
-  border-radius: 8px;
-  margin: 10px;
+  border-radius: 0 0 29px 29px; 
+  margin: 0;  
 }
 
 .sidebar-content {
@@ -261,7 +260,6 @@
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  padding: 0 10px;
 }
 
 .tab-btn {
@@ -328,7 +326,7 @@
 }
 
 .message-text {
-  color: #FDF8E8;
+  color: #000000;
   margin: 0;
   font-size: 14px;
   line-height: 1.4;
