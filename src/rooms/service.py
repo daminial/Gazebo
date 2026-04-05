@@ -14,11 +14,11 @@ from src.core.storage.schemas import ImageCreate, MediaType
 from src.core.storage.service import MediaService
 from src.map.schemas import RoomMapListItem
 from src.rooms.exceptions import RoomPermissionError, RoomAccessError
-from src.rooms.models import Room, RoomUsers, RoomRole
+from src.rooms.models import Room, RoomUsers, RoomRole, RoomSettings, RoomPage
 from src.auth.models import User
 from src.map.models import RoomMap, MapTemplate
 from src.bestiary.models import RoomToken, CreatureTemplate
-from src.rooms.schemas import RoomUserListItem
+from src.rooms.schemas import RoomUserListItem, RoomSettingsCreate, RoomSettingsUpdate, RoomPageCreate, RoomPageUpdate
 
 class RoomService:
     def __init__(self, db: AsyncSession, media_service: Optional[MediaService] = None):
@@ -73,13 +73,26 @@ class RoomService:
         )
         self.db.add(room_user)
 
+        room_settings = RoomSettings(
+            room_id=room.id
+        )
+        self.db.add(room_settings)
+
+        await self.db.flush()
+
+        # Загружаем комнату со всеми relationships
+        room = await self.get_room(room.id)
         return room
 
     async def get_user_rooms(self, user: User) -> List[Room]:
         """Получить все комнаты пользователя"""
         result = await self.db.execute(
             select(Room)
-            .options(joinedload(Room.image))
+            .options(
+                joinedload(Room.image),
+                selectinload(Room.settings),
+                selectinload(Room.pages)
+            )
             .join(RoomUsers)
             .filter_by(user_id=user.id)
             .order_by(Room.created_at.desc())
@@ -87,10 +100,14 @@ class RoomService:
         return list(result.scalars().all())
 
     async def get_room(self, room_id: UUID) -> Room:
-        """Получить комнату по ID с загрузкой изображения"""
+        """Получить комнату по ID с загрузкой изображения, настроек и страниц"""
         result = await self.db.execute(
             select(Room)
-            .options(joinedload(Room.image))
+            .options(
+                joinedload(Room.image),
+                selectinload(Room.settings),
+                selectinload(Room.pages)
+            )
             .filter_by(id=room_id)
         )
         room = result.scalar_one_or_none()
@@ -98,9 +115,18 @@ class RoomService:
 
     async def update_room(self, room_id: UUID, data: dict, user: User) -> Room:
         """Обновить комнату"""
-        room = await self.get_room(room_id)
+        result = await self.db.execute(
+            select(Room)
+            .options(
+                joinedload(Room.image),
+                selectinload(Room.settings),
+                selectinload(Room.pages)
+            )
+            .filter_by(id=room_id)
+        )
+        room = result.scalar_one_or_none()
 
-        if room.owner_id != user.id and not await self.is_dm(room_id, user.id):
+        if not room or (room.owner_id != user.id and not await self.is_dm(room_id, user.id)):
             raise RoomPermissionError("Только DM может редактировать комнату")
 
         for key, value in data.items():
@@ -226,6 +252,11 @@ class RoomService:
 
         if not await self.is_dm(room_id, user_id):
             raise PermissionError("Только DM может добавлять карты")
+
+        if template_id is not None:
+            template = await self.db.get(MapTemplate, template_id)
+            if not template:
+                raise ValueError(f"Шаблон карты с id {template_id} не найден")
 
         image_id = None
         if file:
@@ -434,3 +465,126 @@ class RoomService:
             )
         )
         return result.scalar_one_or_none() is not None
+
+    # Управление настройками комнаты
+    async def get_room_settings(self, room_id: UUID) -> Optional[RoomSettings]:
+        """Получить настройки комнаты"""
+        result = await self.db.execute(
+            select(RoomSettings).filter_by(room_id=room_id)
+        )
+        return result.scalar_one_or_none()
+
+    async def create_room_settings(
+            self,
+            room_id: UUID,
+            settings_data: RoomSettingsCreate
+    ) -> RoomSettings:
+        """Создать настройки комнаты"""
+        settings = RoomSettings(
+            room_id=room_id,
+            **settings_data.model_dump()
+        )
+        self.db.add(settings)
+        await self.db.flush()
+        await self.db.refresh(settings)
+        return settings
+
+    async def update_room_settings(
+            self,
+            room_id: UUID,
+            settings_data: RoomSettingsUpdate
+    ) -> RoomSettings:
+        """Обновить настройки комнаты"""
+        settings = await self.get_room_settings(room_id)
+
+        if not settings:
+            settings = await self.create_room_settings(room_id, RoomSettingsCreate())
+
+        update_data = settings_data.model_dump(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(settings, key, value)
+
+        await self.db.flush()
+        await self.db.refresh(settings)
+        return settings
+
+    # Управление страницами комнаты
+    async def get_room_page(self, page_id: int) -> Optional[RoomPage]:
+        """Получить страницу по ID"""
+        return await self.db.get(RoomPage, page_id)
+
+    async def get_room_pages(self, room_id: UUID) -> List[RoomPage]:
+        """Получить все страницы комнаты"""
+        result = await self.db.execute(
+            select(RoomPage)
+            .filter_by(room_id=room_id)
+            .order_by(RoomPage.order)
+        )
+        return list(result.scalars().all())
+
+    async def create_room_page(
+            self,
+            room_id: UUID,
+            page_data: RoomPageCreate
+    ) -> RoomPage:
+        """Создать новую страницу"""
+        if page_data.map_id is not None:
+            room_map = await self.db.get(RoomMap, page_data.map_id)
+            if not room_map or room_map.room_id != room_id:
+                raise HTTPException(400, "Карта не найдена или не принадлежит этой комнате")
+
+        page = RoomPage(
+            room_id=room_id,
+            **page_data.model_dump()
+        )
+        self.db.add(page)
+        await self.db.flush()
+        await self.db.refresh(page)
+        return page
+
+    async def update_room_page(
+            self,
+            page_id: int,
+            page_data: RoomPageUpdate
+    ) -> RoomPage:
+        """Обновить страницу"""
+        page = await self.get_room_page(page_id)
+        if not page:
+            raise HTTPException(404, "Страница не найдена")
+
+        if page_data.map_id is not None:
+            room_map = await self.db.get(RoomMap, page_data.map_id)
+            if not room_map or room_map.room_id != page.room_id:
+                raise HTTPException(400, "Карта не найдена или не принадлежит этой комнате")
+
+        update_data = page_data.model_dump(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(page, key, value)
+
+        await self.db.flush()
+        await self.db.refresh(page)
+        return page
+
+    async def delete_room_page(self, page_id: int):
+        """Удалить страницу"""
+        page = await self.get_room_page(page_id)
+        if not page:
+            raise HTTPException(404, "Страница не найдена")
+
+        await self.db.delete(page)
+
+    async def set_active_page(self, room_id: UUID, page_id: int) -> Room:
+        """Установить активную страницу комнаты"""
+        room = await self.get_room(room_id)
+        if not room:
+            raise HTTPException(404, "Комната не найдена")
+
+        # Проверка, что страница принадлежит комнате
+        page = await self.get_room_page(page_id)
+        if not page or page.room_id != room_id:
+            raise HTTPException(400, "Страница не принадлежит этой комнате")
+
+        room.active_page_id = page_id
+        await self.db.flush()
+        await self.db.refresh(room)
+        return room

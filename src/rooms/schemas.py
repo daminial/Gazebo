@@ -4,16 +4,96 @@ from datetime import datetime
 from typing import Optional, List
 from src.rooms.enum import RoomStatus, RoomRole
 
+
+# схемы для настроек комнаты
+class RoomSettingsBase(BaseModel):
+    is_public: bool = False
+    grid_size: int = Field(50, ge=10, le=200)
+    players_can_draw: bool = False
+    music_volume: int = Field(70, ge=0, le=100)
+    require_password: bool = False
+
+
+class RoomSettingsCreate(RoomSettingsBase):
+    pass
+
+
+class RoomSettingsUpdate(BaseModel):
+    is_public: Optional[bool] = None
+    grid_size: Optional[int] = Field(None, ge=10, le=200)
+    players_can_draw: Optional[bool] = None
+    music_volume: Optional[int] = Field(None, ge=0, le=100)
+    require_password: Optional[bool] = None
+
+
+class RoomSettingsResponse(RoomSettingsBase):
+    id: int
+    room_id: UUID
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# схемы для страниц комнаты
+class RoomPageBase(BaseModel):
+    name: str = Field(..., min_length=1, max_length=255)
+    background_color: str = "#FFFFFF"
+    grid_size: int = Field(50, ge=10, le=200)
+    grid_visible: bool = True
+    players_can_draw: bool = False
+    order: int = 0
+
+
+class RoomPageCreate(RoomPageBase):
+    map_id: Optional[int] = Field(None, gt=0)
+
+
+class RoomPageUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=255)
+    background_color: Optional[str] = None
+    grid_size: Optional[int] = Field(None, ge=10, le=200)
+    grid_visible: Optional[bool] = None
+    players_can_draw: Optional[bool] = None
+    order: Optional[int] = None
+    map_id: Optional[int] = Field(None, gt=0)
+
+
+class RoomPageResponse(RoomPageBase):
+    id: int
+    room_id: UUID
+    map_id: Optional[int]
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    map_name: Optional[str] = None
+    map_image_url: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class RoomPageListItem(BaseModel):
+    id: int
+    room_id: UUID
+    name: str
+    map_id: Optional[int]
+    background_color: str
+    grid_size: int
+    grid_visible: bool
+    order: int
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 # схемы для комнат
 class RoomCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
-    image_id: Optional[int] = Field(None, description="ID изображения для комнаты")
 
 
 class RoomUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     status: Optional[RoomStatus] = None
-    image_id: Optional[int] = Field(None, description="ID изображения для комнаты")
 
 
 class RoomListItem(BaseModel):
@@ -39,12 +119,15 @@ class RoomResponse(BaseModel):
     updated_at: Optional[datetime] = None
     status: RoomStatus = RoomStatus.PAUSED
     image_id: Optional[int] = None
+    current_page_id: Optional[int] = None
+
+    settings: Optional[RoomSettingsResponse] = None
+    pages: Optional[List[RoomPageListItem]] = None
 
     model_config = ConfigDict(from_attributes=True)
 
 
 # схемы для пользователей в комнате
-
 class RoomUserBase(BaseModel):
     room_role: RoomRole
 

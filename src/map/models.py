@@ -45,6 +45,7 @@ class RoomMap(Base):
     image = relationship("Image", uselist=False)
     room = relationship("Room", back_populates="maps")
     template = relationship("MapTemplate", back_populates="room_instances")
+    pages = relationship("RoomPage", back_populates="map")
 
     __table_args__ = (
         CheckConstraint(

@@ -1,8 +1,6 @@
-from io import BytesIO
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, Form
-from fastapi.params import File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, Form, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 
@@ -12,43 +10,51 @@ from src.core.database import get_db
 from src.auth.dependencies import get_current_user
 from src.auth.models import User
 from src.core.storage.dependencies import get_s3_client
-from src.core.storage.models import Image
 from src.core.storage.s3Client import S3Client
-from src.core.storage.schemas import ImageCreate, MediaType
 from src.core.storage.service import MediaService
-from src.map.schemas import RoomMapCreate, RoomMapResponse, RoomMapListItem
+from src.map.schemas import RoomMapResponse, RoomMapListItem
 from src.rooms.enum import RoomRole
 from src.rooms.livekit import generate_livekit_token
 from src.rooms.service import RoomService
-from src.rooms.schemas import (RoomResponse, RoomCreate, RoomUpdate, RoomUserListItem,
+from src.rooms.schemas import (RoomResponse, RoomUserListItem,
                                RoomUserResponse, RoomUserUpdate, RoomTokenBasicInfo,
                                TokenPositionUpdate, TokenHPUpdate, TokenConditionsUpdate, TokenVisibilityUpdate,
-                               LiveKitTokenResponse)
+                               LiveKitTokenResponse, RoomSettingsResponse, RoomSettingsUpdate,
+                               RoomPageResponse, RoomPageCreate, RoomPageUpdate, RoomPageListItem, RoomListItem)
+from src.rooms.enum import RoomStatus
 
 router = APIRouter(prefix="/rooms", tags=["rooms"], redirect_slashes=False)
 
 
 @router.post("", response_model=RoomResponse)
 async def create_room(
-        room_data: RoomCreate,
+        name: str = Form(...),
+        image: Optional[UploadFile] = File(None),
         db: AsyncSession = Depends(get_db),
-        current_user: User = Depends(get_current_user)
+        current_user: User = Depends(get_current_user),
+        s3_client: S3Client = Depends(get_s3_client)
 ):
     """Создать новую комнату"""
-    image = await db.get(Image, room_data.image_id)
-    if not image:
-        raise HTTPException(404, f"Изображение с id {room_data.image_id} не найдено")
-
     service = RoomService(db)
+    
+    image_id = None
+    if image:
+        image_id = await service._upload_image_file(
+            file=image,
+            user_id=current_user.id,
+            caption=name,
+            s3_client=s3_client
+        )
+    
     room = await service.create_room(
-        name=room_data.name,
-        image_id=room_data.image_id,
+        name=name,
+        image_id=image_id,
         user=current_user
     )
     return room
 
 
-@router.get("/my", response_model=List[RoomResponse])
+@router.get("/my", response_model=List[RoomListItem])
 async def get_my_rooms(
         db: AsyncSession = Depends(get_db),
         current_user: User = Depends(get_current_user)
@@ -69,7 +75,7 @@ async def get_room(
     service = RoomService(db)
     room = await service.get_room(room_id)
 
-    if not await service.is_in_room(room_id, current_user.id):
+    if not room or not await service.is_in_room(room_id, current_user.id):
         raise HTTPException(403, "Вы не в этой комнате")
 
     return room
@@ -78,23 +84,32 @@ async def get_room(
 @router.put("/{room_id}", response_model=RoomResponse)
 async def update_room(
         room_id: UUID,
-        room_update: RoomUpdate,
+        name: Optional[str] = Form(None),
+        image: Optional[UploadFile] = File(None),
+        status: Optional[RoomStatus] = Form(None),
         db: AsyncSession = Depends(get_db),
-        current_user: User = Depends(get_current_user)
+        current_user: User = Depends(get_current_user),
+        s3_client: S3Client = Depends(get_s3_client)
 ):
     """Обновить комнату"""
     service = RoomService(db)
-
-    if room_update.image_id is not None:
-        image = await db.get(Image, room_update.image_id)
-        if not image:
-            raise HTTPException(404, f"Изображение с id {room_update.image_id} не найдено")
-
-    update_data = room_update.model_dump(exclude_unset=True)
+    
+    update_data = {}
+    if name is not None:
+        update_data['name'] = name
+    if status is not None:
+        update_data['status'] = status
+    
+    if image:
+        image_id = await service._upload_image_file(
+            file=image,
+            user_id=current_user.id,
+            caption=name or f"Room {room_id}",
+            s3_client=s3_client
+        )
+        update_data['image_id'] = image_id
+    
     room = await service.update_room(room_id, update_data, current_user)
-
-    await db.commit()
-    await db.refresh(room)
     return room
 
 @router.delete("/{room_id}")
@@ -438,3 +453,154 @@ async def delete_token(
 
     await service.delete_token(token_id)
     return {"message": "Токен удален"}
+
+
+# Управление настройками комнаты
+@router.get("/{room_id}/settings", response_model=RoomSettingsResponse)
+async def get_room_settings(
+        room_id: UUID,
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_user)
+):
+    """Получить настройки комнаты"""
+    service = RoomService(db)
+
+    if not await service.is_in_room(room_id, current_user.id):
+        raise HTTPException(403, "Вы не в этой комнате")
+
+    room_settings = await service.get_room_settings(room_id)
+    if not room_settings:
+        raise HTTPException(404, "Настройки комнаты не найдены")
+
+    return room_settings
+
+
+@router.patch("/{room_id}/settings", response_model=RoomSettingsResponse)
+async def update_room_settings(
+        room_id: UUID,
+        settings_data: RoomSettingsUpdate,
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_user)
+):
+    """Обновить настройки комнаты (только DM)"""
+    service = RoomService(db)
+
+    if not await service.is_dm(room_id, current_user.id):
+        raise HTTPException(403, "Только DM может изменять настройки комнаты")
+
+    settings = await service.update_room_settings(room_id, settings_data)
+    return settings
+
+
+# Управление страницами комнаты
+@router.post("/{room_id}/pages", response_model=RoomPageResponse, status_code=201)
+async def create_room_page(
+        room_id: UUID,
+        page_data: RoomPageCreate,
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_user)
+):
+    """Создать новую страницу в комнате (только DM)"""
+    service = RoomService(db)
+
+    if not await service.is_dm(room_id, current_user.id):
+        raise HTTPException(403, "Только DM может создавать страницы")
+
+    page = await service.create_room_page(room_id, page_data)
+    return page
+
+
+@router.get("/{room_id}/pages", response_model=List[RoomPageListItem])
+async def get_room_pages(
+        room_id: UUID,
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_user)
+):
+    """Получить все страницы комнаты"""
+    service = RoomService(db)
+
+    if not await service.is_in_room(room_id, current_user.id):
+        raise HTTPException(403, "Вы не в этой комнате")
+
+    pages = await service.get_room_pages(room_id)
+    return pages
+
+
+@router.get("/{room_id}/pages/{page_id}", response_model=RoomPageResponse)
+async def get_room_page(
+        room_id: UUID,
+        page_id: int,
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_user)
+):
+    """Получить страницу по ID"""
+    service = RoomService(db)
+
+    if not await service.is_in_room(room_id, current_user.id):
+        raise HTTPException(403, "Вы не в этой комнате")
+
+    page = await service.get_room_page(page_id)
+    if not page or page.room_id != room_id:
+        raise HTTPException(404, "Страница не найдена")
+
+    return page
+
+
+@router.put("/{room_id}/pages/{page_id}", response_model=RoomPageResponse)
+async def update_room_page(
+        room_id: UUID,
+        page_id: int,
+        page_data: RoomPageUpdate,
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_user)
+):
+    """Обновить страницу (только DM)"""
+    service = RoomService(db)
+
+    if not await service.is_dm(room_id, current_user.id):
+        raise HTTPException(403, "Только DM может изменять страницы")
+
+    page = await service.get_room_page(page_id)
+    if not page or page.room_id != room_id:
+        raise HTTPException(404, "Страница не найдена")
+
+    page = await service.update_room_page(page_id, page_data)
+    return page
+
+
+@router.delete("/{room_id}/pages/{page_id}")
+async def delete_room_page(
+        room_id: UUID,
+        page_id: int,
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_user)
+):
+    """Удалить страницу (только DM)"""
+    service = RoomService(db)
+
+    if not await service.is_dm(room_id, current_user.id):
+        raise HTTPException(403, "Только DM может удалять страницы")
+
+    page = await service.get_room_page(page_id)
+    if not page or page.room_id != room_id:
+        raise HTTPException(404, "Страница не найдена")
+
+    await service.delete_room_page(page_id)
+    return {"message": "Страница удалена"}
+
+
+@router.post("/{room_id}/pages/{page_id}/set-active")
+async def set_active_page(
+        room_id: UUID,
+        page_id: int,
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_user)
+):
+    """Установить активную страницу комнаты (только DM)"""
+    service = RoomService(db)
+
+    if not await service.is_dm(room_id, current_user.id):
+        raise HTTPException(403, "Только DM может менять активную страницу")
+
+    room = await service.set_active_page(room_id, page_id)
+    return {"message": "Активная страница установлена", "page_id": page_id}
