@@ -51,6 +51,7 @@ class RoomPageBase(BaseModel):
 
 class RoomPageCreate(RoomPageBase):
     map_id: Optional[int] = Field(None, gt=0)
+    background_image_id: Optional[int] = Field(None, gt=0)
 
 
 class RoomPageUpdate(BaseModel):
@@ -63,17 +64,20 @@ class RoomPageUpdate(BaseModel):
     players_can_draw: Optional[bool] = None
     order: Optional[int] = None
     map_id: Optional[int] = Field(None, gt=0)
+    background_image_id: Optional[int] = Field(None, gt=0)
 
 
 class RoomPageResponse(RoomPageBase):
     id: int
     room_id: UUID
     map_id: Optional[int]
+    background_image_id: Optional[int]
     created_at: datetime
     updated_at: Optional[datetime] = None
 
     map_name: Optional[str] = None
     map_image_url: Optional[str] = None
+    background_image_url: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -83,6 +87,7 @@ class RoomPageListItem(BaseModel):
     room_id: UUID
     name: str
     map_id: Optional[int]
+    background_image_id: Optional[int]
     background_color: str
     canvas_width: int
     canvas_height: int
@@ -90,6 +95,8 @@ class RoomPageListItem(BaseModel):
     grid_visible: bool
     order: int
     created_at: datetime
+
+    background_image_url: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 

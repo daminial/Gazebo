@@ -40,54 +40,41 @@ export function RoomProvider({ roomId, children }) {
   useEffect(() => {
     async function loadRoomData() {
       try {
-        const [roomRes, tokensRes] = await Promise.all([
+        const [roomRes, tokensRes, pagesRes] = await Promise.all([
           roomsAPI.getById(roomId),
           roomsAPI.getTokens(roomId),
+          roomsAPI.getPages(roomId),
         ]);
 
         console.log('Room data from server:', roomRes.data);
+        console.log('Pages from server:', pagesRes.data);
 
-        // Извлекаем карты из страниц
-        const pagesData = roomRes.data.pages || [];
-        setPages(pagesData);
-        
-        // Загружаем карты для каждой страницы
-        const mapsPromises = pagesData.map(async (page) => {
-          try {
-            const mapsRes = await roomsAPI.getMaps(roomId);
-            const pageMap = mapsRes.data.find(m => m.id === page.map_id);
-            return {
-              ...page,
-              map: pageMap || null
-            };
-          } catch (err) {
-            console.error('Failed to load map for page:', err);
-            return { ...page, map: null };
-          }
-        });
-        
-        const pagesWithMaps = await Promise.all(mapsPromises);
+        // Загружаем все карты комнаты
+        const mapsRes = await roomsAPI.getMaps(roomId);
+        setMaps(mapsRes.data);
+
+        // Привязываем карты к страницам
+        const pagesData = pagesRes.data || [];
+        const pagesWithMaps = pagesData.map((page) => ({
+          ...page,
+          map: page.map_id ? mapsRes.data.find(m => m.id === page.map_id) || null : null
+        }));
         setPages(pagesWithMaps);
-        
+
         // Устанавливаем активную страницу
-        if (pagesData.length > 0) {
-          const activePage = roomRes.data.active_page_id 
-            ? pagesData.find(p => p.id === roomRes.data.active_page_id)
-            : pagesData[0];
-          setActivePageId(activePage?.id || null);
-          
-          // Если у активной страницы есть карта, устанавливаем её
+        if (pagesWithMaps.length > 0) {
+          const activePageIdFromServer = roomRes.data.current_page_id
+            || pagesWithMaps[0]?.id;
+          setActivePageId(activePageIdFromServer || null);
+
+          const activePage = pagesWithMaps.find(p => p.id === activePageIdFromServer);
           if (activePage?.map) {
             setActiveMapId(activePage.map.id);
           }
         }
 
-        // Загружаем все карты комнаты для доступа к ним
-        const allMapsRes = await roomsAPI.getMaps(roomId);
-        setMaps(allMapsRes.data);
-
         setTokens(tokensRes.data);
-        
+
         // Настройки комнаты
         if (roomRes.data.settings) {
           setRoomSettings(roomRes.data.settings);
@@ -222,21 +209,82 @@ export function RoomProvider({ roomId, children }) {
   const createPage = useCallback(async (pageData) => {
     try {
       const response = await roomsAPI.createPage(roomId, pageData);
-      setPages(prev => [...prev, response.data]);
-      return response.data;
+      const pageDataWithMap = {
+        ...response.data,
+        map: response.data.map_id ? maps.find(m => m.id === response.data.map_id) || null : null,
+      };
+      setPages(prev => [...prev, pageDataWithMap]);
+      return pageDataWithMap;
     } catch (err) {
       console.error('Failed to create page:', err);
       throw err;
     }
-  }, [roomId]);
+  }, [roomId, maps]);
 
   const updatePage = useCallback(async (pageId, pageData) => {
     try {
       const response = await roomsAPI.updatePage(roomId, pageId, pageData);
-      setPages(prev => prev.map(p => p.id === pageId ? response.data : p));
-      return response.data;
+      const updatedPage = {
+        ...response.data,
+        map: response.data.map_id ? maps.find(m => m.id === response.data.map_id) || null : null,
+      };
+      setPages(prev => prev.map(p => p.id === pageId ? updatedPage : p));
+      return updatedPage;
     } catch (err) {
       console.error('Failed to update page:', err);
+      throw err;
+    }
+  }, [roomId, maps]);
+
+  const deletePage = useCallback(async (pageId) => {
+    try {
+      await roomsAPI.deletePage(roomId, pageId);
+      setPages(prev => prev.filter(p => p.id !== pageId));
+      // Если удалили активную страницу, переключаем на первую доступную
+      setActivePageId(prev => {
+        if (prev === pageId) {
+          return pages.length > 1 ? pages.find(p => p.id !== pageId)?.id : null;
+        }
+        return prev;
+      });
+    } catch (err) {
+      console.error('Failed to delete page:', err);
+      throw err;
+    }
+  }, [roomId, pages]);
+
+  const setPageBackground = useCallback(async (pageId, imageId) => {
+    try {
+      await roomsAPI.setPageBackground(roomId, pageId, imageId);
+      // Перезагружаем страницы для получения актуальных данных
+      const pagesRes = await roomsAPI.getPages(roomId);
+      const mapsRes = await roomsAPI.getMaps(roomId);
+      const pagesData = pagesRes.data || [];
+      const pagesWithMaps = pagesData.map((page) => ({
+        ...page,
+        map: page.map_id ? mapsRes.data.find(m => m.id === page.map_id) || null : null
+      }));
+      setPages(pagesWithMaps);
+    } catch (err) {
+      console.error('Failed to set page background:', err);
+      throw err;
+    }
+  }, [roomId]);
+
+  const removePageBackground = useCallback(async (pageId) => {
+    try {
+      await roomsAPI.removePageBackground(roomId, pageId);
+      // Перезагружаем страницы для получения актуальных данных
+      const pagesRes = await roomsAPI.getPages(roomId);
+      const mapsRes = await roomsAPI.getMaps(roomId);
+      const pagesData = pagesRes.data || [];
+      const pagesWithMaps = pagesData.map((page) => ({
+        ...page,
+        map: page.map_id ? mapsRes.data.find(m => m.id === page.map_id) || null : null
+      }));
+      setPages(pagesWithMaps);
+    } catch (err) {
+      console.error('Failed to remove page background:', err);
       throw err;
     }
   }, [roomId]);
@@ -276,6 +324,9 @@ export function RoomProvider({ roomId, children }) {
     updateRoomSettings,
     createPage,
     updatePage,
+    deletePage,
+    setPageBackground,
+    removePageBackground,
 
     // Состояние
     loading,

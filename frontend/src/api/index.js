@@ -126,6 +126,8 @@ export const roomsAPI = {
   updatePage: (id, pageId, data) => api.put(`/rooms/${id}/pages/${pageId}`, data),
   deletePage: (id, pageId) => api.delete(`/rooms/${id}/pages/${pageId}`),
   setActivePage: (id, pageId) => api.post(`/rooms/${id}/pages/${pageId}/set-active`),
+  setPageBackground: (id, pageId, imageId) => api.post(`/rooms/${id}/pages/${pageId}/set-background-image`, { image_id: imageId }),
+  removePageBackground: (id, pageId) => api.delete(`/rooms/${id}/pages/${pageId}/background`),
   
   // Участники
   getUsers: (id) => api.get(`/rooms/${id}/users`),

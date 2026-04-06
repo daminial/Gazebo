@@ -1,0 +1,156 @@
+/* Форма создания страницы */
+.page-create-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.page-create-form .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.page-create-form label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #2d2525;
+}
+
+.page-create-form input[type="text"],
+.page-create-form input[type="number"] {
+  padding: 10px 12px;
+  border: 2px solid rgba(0, 0, 0, 0.15);
+  border-radius: 6px;
+  background: #fff;
+  color: #2d2525;
+  font-size: 14px;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.page-create-form input[type="text"]:focus,
+.page-create-form input[type="number"]:focus {
+  outline: none;
+  border-color: #5A6B3A;
+  background: #fff;
+}
+
+.page-create-form input[type="text"].error,
+.page-create-form input[type="number"].error {
+  border-color: #FF6B6B;
+}
+
+.page-create-form input[type="color"] {
+  width: 50px;
+  height: 40px;
+  border: 2px solid rgba(0, 0, 0, 0.15);
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+  padding: 2px;
+}
+
+.page-create-form input[type="color"]:hover {
+  border-color: #5A6B3A;
+}
+
+.color-input-wrapper {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.color-text-input {
+  flex: 1;
+  padding: 10px 12px;
+  border: 2px solid rgba(0, 0, 0, 0.15);
+  border-radius: 6px;
+  background: #fff;
+  color: #2d2525;
+  font-size: 14px;
+  font-family: monospace;
+}
+
+.color-text-input:focus {
+  outline: none;
+  border-color: #5A6B3A;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.checkbox-group {
+  flex-direction: row !important;
+  align-items: center;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #2d2525;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  accent-color: #A8C46E;
+}
+
+.error-text {
+  font-size: 12px;
+  color: #FF6B6B;
+  margin-top: 2px;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 8px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.btn-primary,
+.btn-secondary {
+  padding: 10px 24px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-primary {
+  background: #A8C46E;
+  color: #2d2525;
+}
+
+.btn-primary:hover {
+  background: #B8D47E;
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background: rgba(0, 0, 0, 0.1);
+  color: #2d2525;
+}
+
+.btn-secondary:hover {
+  background: rgba(0, 0, 0, 0.15);
+}
+
+/* Адаптивность */
+@media (max-width: 480px) {
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+}

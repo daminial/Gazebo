@@ -498,32 +498,46 @@ async def create_room_page(
         room_id: UUID,
         page_data: RoomPageCreate,
         db: AsyncSession = Depends(get_db),
-        current_user: User = Depends(get_current_user)
+        current_user: User = Depends(get_current_user),
+        s3_client: S3Client = Depends(get_s3_client)
 ):
     """Создать новую страницу в комнате (только DM)"""
     service = RoomService(db)
+    media_service = MediaService(s3_client, db)
 
     if not await service.is_dm(room_id, current_user.id):
         raise HTTPException(403, "Только DM может создавать страницы")
 
     page = await service.create_room_page(room_id, page_data)
-    return page
+
+    response = RoomPageResponse.model_validate(page)
+    if page.background_image:
+        response.background_image_url = await media_service.get_image_url(page.background_image)
+    return response
 
 
 @router.get("/{room_id}/pages", response_model=List[RoomPageListItem])
 async def get_room_pages(
         room_id: UUID,
         db: AsyncSession = Depends(get_db),
-        current_user: User = Depends(get_current_user)
+        current_user: User = Depends(get_current_user),
+        s3_client: S3Client = Depends(get_s3_client)
 ):
     """Получить все страницы комнаты"""
     service = RoomService(db)
+    media_service = MediaService(s3_client, db)
 
     if not await service.is_in_room(room_id, current_user.id):
         raise HTTPException(403, "Вы не в этой комнате")
 
     pages = await service.get_room_pages(room_id)
-    return pages
+    result = []
+    for page in pages:
+        item = RoomPageListItem.model_validate(page)
+        if page.background_image:
+            item.background_image_url = await media_service.get_image_url(page.background_image)
+        result.append(item)
+    return result
 
 
 @router.get("/{room_id}/pages/{page_id}", response_model=RoomPageResponse)
@@ -531,10 +545,12 @@ async def get_room_page(
         room_id: UUID,
         page_id: int,
         db: AsyncSession = Depends(get_db),
-        current_user: User = Depends(get_current_user)
+        current_user: User = Depends(get_current_user),
+        s3_client: S3Client = Depends(get_s3_client)
 ):
     """Получить страницу по ID"""
     service = RoomService(db)
+    media_service = MediaService(s3_client, db)
 
     if not await service.is_in_room(room_id, current_user.id):
         raise HTTPException(403, "Вы не в этой комнате")
@@ -543,7 +559,10 @@ async def get_room_page(
     if not page or page.room_id != room_id:
         raise HTTPException(404, "Страница не найдена")
 
-    return page
+    response = RoomPageResponse.model_validate(page)
+    if page.background_image:
+        response.background_image_url = await media_service.get_image_url(page.background_image)
+    return response
 
 
 @router.put("/{room_id}/pages/{page_id}", response_model=RoomPageResponse)
@@ -552,10 +571,12 @@ async def update_room_page(
         page_id: int,
         page_data: RoomPageUpdate,
         db: AsyncSession = Depends(get_db),
-        current_user: User = Depends(get_current_user)
+        current_user: User = Depends(get_current_user),
+        s3_client: S3Client = Depends(get_s3_client)
 ):
     """Обновить страницу (только DM)"""
     service = RoomService(db)
+    media_service = MediaService(s3_client, db)
 
     if not await service.is_dm(room_id, current_user.id):
         raise HTTPException(403, "Только DM может изменять страницы")
@@ -565,7 +586,11 @@ async def update_room_page(
         raise HTTPException(404, "Страница не найдена")
 
     page = await service.update_room_page(page_id, page_data)
-    return page
+
+    response = RoomPageResponse.model_validate(page)
+    if page.background_image:
+        response.background_image_url = await media_service.get_image_url(page.background_image)
+    return response
 
 
 @router.delete("/{room_id}/pages/{page_id}")
@@ -604,3 +629,57 @@ async def set_active_page(
 
     room = await service.set_active_page(room_id, page_id)
     return {"message": "Активная страница установлена", "page_id": page_id}
+
+
+@router.post("/{room_id}/pages/{page_id}/set-background-image")
+async def set_page_background_image(
+        room_id: UUID,
+        page_id: int,
+        request_body: dict,
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_user),
+        s3_client: S3Client = Depends(get_s3_client)
+):
+    """Установить фоновое изображение для страницы из существующего image_id (только DM)"""
+    image_id = request_body.get("image_id")
+    if not image_id:
+        raise HTTPException(400, "Требуется image_id")
+
+    service = RoomService(db)
+    media_service = MediaService(s3_client, db)
+
+    if not await service.is_dm(room_id, current_user.id):
+        raise HTTPException(403, "Только DM может устанавливать фоновые изображения")
+
+    page = await service.get_room_page(page_id)
+    if not page or page.room_id != room_id:
+        raise HTTPException(404, "Страница не найдена")
+
+    page = await service.set_page_background_image(page_id=page_id, image_id=image_id)
+
+    response = RoomPageResponse.model_validate(page)
+    if page.background_image:
+        response.background_image_url = await media_service.get_image_url(page.background_image)
+
+    return response
+
+
+@router.delete("/{room_id}/pages/{page_id}/background")
+async def remove_page_background(
+        room_id: UUID,
+        page_id: int,
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_user)
+):
+    """Удалить фоновое изображение страницы (только DM)"""
+    service = RoomService(db)
+
+    if not await service.is_dm(room_id, current_user.id):
+        raise HTTPException(403, "Только DM может удалять фоновые изображения")
+
+    page = await service.get_room_page(page_id)
+    if not page or page.room_id != room_id:
+        raise HTTPException(404, "Страница не найдена")
+
+    await service.remove_page_background_image(page_id)
+    return {"message": "Фоновое изображение удалено"}

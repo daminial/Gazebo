@@ -75,6 +75,10 @@ class RoomPage(Base):
     canvas_width = Column(Integer, default=1920)
     canvas_height = Column(Integer, default=1080)
 
+    background_image_id = Column(Integer,
+                                  ForeignKey("images.id", ondelete="SET NULL"),
+                                  nullable=True)
+
     grid_size = Column(Integer, default=50)
     grid_visible = Column(Boolean, default=True)
     players_can_draw = Column(Boolean, default=False)
@@ -88,6 +92,7 @@ class RoomPage(Base):
                         back_populates="pages",
                         foreign_keys=[room_id])
     map = relationship("RoomMap", back_populates="pages")
+    background_image = relationship("Image", foreign_keys=[background_image_id])
     tokens = relationship("RoomToken", back_populates="page",
                           cascade="all, delete-orphan",
                           primaryjoin="RoomPage.id == RoomToken.page_id")

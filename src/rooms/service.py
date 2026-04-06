@@ -511,7 +511,12 @@ class RoomService:
     # Управление страницами комнаты
     async def get_room_page(self, page_id: int) -> Optional[RoomPage]:
         """Получить страницу по ID"""
-        return await self.db.get(RoomPage, page_id)
+        result = await self.db.execute(
+            select(RoomPage)
+            .where(RoomPage.id == page_id)
+            .options(selectinload(RoomPage.background_image))
+        )
+        return result.scalar_one_or_none()
 
     async def get_room_pages(self, room_id: UUID) -> List[RoomPage]:
         """Получить все страницы комнаты"""
@@ -519,6 +524,7 @@ class RoomService:
             select(RoomPage)
             .filter_by(room_id=room_id)
             .order_by(RoomPage.order)
+            .options(selectinload(RoomPage.background_image))
         )
         return list(result.scalars().all())
 
@@ -539,8 +545,13 @@ class RoomService:
         )
         self.db.add(page)
         await self.db.flush()
-        await self.db.refresh(page)
-        return page
+
+        result = await self.db.execute(
+            select(RoomPage)
+            .where(RoomPage.id == page.id)
+            .options(selectinload(RoomPage.background_image))
+        )
+        return result.scalar_one()
 
     async def update_room_page(
             self,
@@ -588,3 +599,32 @@ class RoomService:
         await self.db.flush()
         await self.db.refresh(room)
         return room
+
+    async def set_page_background_image(
+            self,
+            page_id: int,
+            image_id: int,
+    ) -> RoomPage:
+        """Установить фоновое изображение для страницы из существующего изображения"""
+        page = await self.get_room_page(page_id)
+        if not page:
+            raise HTTPException(404, "Страница не найдена")
+
+        page.background_image_id = image_id
+        await self.db.flush()
+
+        result = await self.db.execute(
+            select(RoomPage)
+            .where(RoomPage.id == page_id)
+            .options(selectinload(RoomPage.background_image))
+        )
+        return result.scalar_one()
+
+    async def remove_page_background_image(self, page_id: int):
+        """Удалить фоновое изображение страницы"""
+        page = await self.get_room_page(page_id)
+        if not page:
+            raise HTTPException(404, "Страница не найдена")
+
+        page.background_image_id = None
+        await self.db.flush()

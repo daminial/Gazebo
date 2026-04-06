@@ -4,9 +4,13 @@ import { RoomProvider, useRoom } from '../context/RoomContext'
 import { VideoGrid } from '../components/Room/VideoGrid'
 import { ChatPanel } from '../components/Room/ChatPanel'
 import { ImagesPanel } from '../components/Room/ImagesPanel'
-import { MapSelector } from '../components/Room/MapSelector'
+import { MapCanvas } from '../components/Room/MapCanvas'
 import { PagesDropdown } from '../components/Room/PagesDropdown'
 import { RoomSettingsPanel } from '../components/Room/RoomSettingsPanel'
+import { LuMousePointer2, LuHand } from 'react-icons/lu'
+import { PiPencilSimple, PiTextT } from 'react-icons/pi'
+import { BiCloud } from 'react-icons/bi'
+import { FaRuler } from 'react-icons/fa'
 import './GameBoard.css'
 
 // Внутренний компонент для контента с доступом к контексту
@@ -16,6 +20,7 @@ function GameBoardContent() {
   const [activeTab, setActiveTab] = useState('chat')
   const [chatMessage, setChatMessage] = useState('')
   const [diceResult, setDiceResult] = useState(null)
+  const [activeTool, setActiveTool] = useState('select')
 
   // Получаем активную страницу
   const activePage = pages.find(p => p.id === activePageId)
@@ -29,12 +34,12 @@ function GameBoardContent() {
 
   // Инструменты
   const tools = [
-    { id: 'select', icon: '◧', name: 'Выделение' },
-    { id: 'hand', icon: '✋', name: 'Рука' },
-    { id: 'draw', icon: '✏️', name: 'Рисование' },
-    { id: 'text', icon: 'T', name: 'Текст' },
-    { id: 'measure', icon: '📏', name: 'Измерение' },
-    { id: 'fog', icon: '☁️', name: 'Туман' },
+    { id: 'select', icon: <LuMousePointer2 size={20} />, name: 'Выделение' },
+    { id: 'hand', icon: <LuHand size={20} />, name: 'Рука (перемещение)' },
+    { id: 'draw', icon: <PiPencilSimple size={20} />, name: 'Рисование' },
+    { id: 'text', icon: <PiTextT size={20} />, name: 'Текст' },
+    { id: 'measure', icon: <FaRuler size={18} />, name: 'Измерение' },
+    { id: 'fog', icon: <BiCloud size={20} />, name: 'Туман' },
   ]
 
   // Кубики
@@ -73,7 +78,12 @@ function GameBoardContent() {
 
         <div className="toolbar-section tools">
           {tools.map(tool => (
-            <button key={tool.id} className="toolbar-btn" title={tool.name}>
+            <button
+              key={tool.id}
+              className={`toolbar-btn ${activeTool === tool.id ? 'tool-active' : ''}`}
+              title={tool.name}
+              onClick={() => setActiveTool(tool.id)}
+            >
               {tool.icon}
             </button>
           ))}
@@ -97,22 +107,15 @@ function GameBoardContent() {
 
       {/* Main Canvas Area */}
       <main className="canvas-area">
-        {/* Map Container */}
+        {/* Map Container — viewport, заполняет всё доступное пространство */}
         <div className="map-container" style={{ background: backgroundColor }}>
-          <MapSelector />
-          <div className={`map-wrapper ${gridVisible ? 'show-grid' : ''}`} style={{
-            width: `${canvasWidth}px`,
-            height: `${canvasHeight}px`
-          }}>
-            <ActiveMapImage />
-            <div className="grid-overlay" style={{
-              backgroundImage: `
-                linear-gradient(rgba(0, 0, 0, 0.5) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(0, 0, 0, 0.5) 1px, transparent 1px)
-              `,
-              backgroundSize: `${gridSize}px ${gridSize}px`
-            }}></div>
-          </div>
+          <MapCanvas
+            activeTool={activeTool}
+            canvasWidth={canvasWidth}
+            canvasHeight={canvasHeight}
+            gridSize={gridSize}
+            gridVisible={gridVisible}
+          />
 
           {/* Кнопка страниц — выезжает сверху */}
           <PagesDropdown />
@@ -206,42 +209,6 @@ function GameBoardContent() {
         )}
       </div>
     </div>
-  )
-}
-
-// Компонент отображения активной карты
-function ActiveMapImage() {
-  const { maps, activeMapId, pages, activePageId } = useRoom()
-
-  // Сначала пытаемся получить карту из активной страницы
-  const activePage = pages.find(p => p.id === activePageId)
-  let activeMap = null
-  
-  if (activePage?.map) {
-    activeMap = activePage.map
-  } else if (activeMapId) {
-    activeMap = maps.find(m => m.id === activeMapId)
-  }
-
-  // image_url уже должен быть с /api префиксом из RoomContext
-  const imageUrl = activeMap?.image_url
-
-  if (!activeMap || !imageUrl) {
-    return (
-      <img
-        src="https://placehold.co/1200x800/FFFFFF/CCCCCC?text=Game+Map"
-        alt="Game Map"
-        className="map-image"
-      />
-    )
-  }
-
-  return (
-    <img
-      src={imageUrl}
-      alt={activeMap.name_in_room || activeMap.template_name || 'Карта'}
-      className="map-image"
-    />
   )
 }
 

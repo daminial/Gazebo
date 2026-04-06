@@ -4,7 +4,7 @@ import { roomsAPI, mapTemplatesAPI } from '../../api'
 import './ImagesPanel.css'
 
 export function ImagesPanel() {
-  const { roomId, maps, activeMapId, setMaps, setActiveMapId } = useRoom()
+  const { roomId, maps, setMaps } = useRoom()
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [showTemplatesModal, setShowTemplatesModal] = useState(false)
   const [templates, setTemplates] = useState([])
@@ -97,11 +97,6 @@ export function ImagesPanel() {
     }
   }
 
-  // Выбор активной карты
-  const handleSelectMap = async (mapId) => {
-    setActiveMapId(mapId)
-  }
-
   // Удаление карты из комнаты
   const handleDeleteMap = async (e, mapId) => {
     e.stopPropagation()
@@ -110,9 +105,6 @@ export function ImagesPanel() {
     try {
       await roomsAPI.deleteMap(roomId, mapId)
       setMaps(prev => prev.filter(m => m.id !== mapId))
-      if (activeMapId === mapId) {
-        setActiveMapId(null)
-      }
     } catch (err) {
       console.error('Failed to delete map:', err)
       alert('Ошибка удаления карты')
@@ -122,7 +114,6 @@ export function ImagesPanel() {
   return (
     <div className="images-panel">
       <div className="images-header">
-        <h4>Карты комнаты</h4>
         <div className="images-actions">
           <button
             className="btn-add-image"
@@ -152,8 +143,7 @@ export function ImagesPanel() {
             {maps.map(map => (
               <div
                 key={map.id}
-                className={`map-card ${map.id === activeMapId ? 'active' : ''}`}
-                onClick={() => handleSelectMap(map.id)}
+                className={`map-card`}
               >
                 <div className="map-card-image">
                   {map.image_url ? (
@@ -164,9 +154,6 @@ export function ImagesPanel() {
                 </div>
                 <div className="map-card-info">
                   <span className="map-title">{map.name_in_room || map.template_name || 'Карта'}</span>
-                  {map.id === activeMapId && (
-                    <span className="active-badge">✓</span>
-                  )}
                 </div>
                 <button
                   className="btn-delete-map"
