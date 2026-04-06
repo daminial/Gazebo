@@ -9,6 +9,7 @@ from src.rooms.enum import RoomStatus, RoomRole
 class RoomSettingsBase(BaseModel):
     is_public: bool = False
     grid_size: int = Field(50, ge=10, le=200)
+    grid_visible: bool = True
     players_can_draw: bool = False
     music_volume: int = Field(70, ge=0, le=100)
     require_password: bool = False
@@ -21,6 +22,7 @@ class RoomSettingsCreate(RoomSettingsBase):
 class RoomSettingsUpdate(BaseModel):
     is_public: Optional[bool] = None
     grid_size: Optional[int] = Field(None, ge=10, le=200)
+    grid_visible: Optional[bool] = None
     players_can_draw: Optional[bool] = None
     music_volume: Optional[int] = Field(None, ge=0, le=100)
     require_password: Optional[bool] = None
@@ -39,6 +41,8 @@ class RoomSettingsResponse(RoomSettingsBase):
 class RoomPageBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     background_color: str = "#FFFFFF"
+    canvas_width: int = Field(1920, gt=0)
+    canvas_height: int = Field(1080, gt=0)
     grid_size: int = Field(50, ge=10, le=200)
     grid_visible: bool = True
     players_can_draw: bool = False
@@ -52,6 +56,8 @@ class RoomPageCreate(RoomPageBase):
 class RoomPageUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     background_color: Optional[str] = None
+    canvas_width: Optional[int] = Field(None, gt=0)
+    canvas_height: Optional[int] = Field(None, gt=0)
     grid_size: Optional[int] = Field(None, ge=10, le=200)
     grid_visible: Optional[bool] = None
     players_can_draw: Optional[bool] = None
@@ -78,6 +84,8 @@ class RoomPageListItem(BaseModel):
     name: str
     map_id: Optional[int]
     background_color: str
+    canvas_width: int
+    canvas_height: int
     grid_size: int
     grid_visible: bool
     order: int

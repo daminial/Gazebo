@@ -64,11 +64,34 @@ export const roomsAPI = {
   getAll: () => api.get('/rooms'),
   getMy: () => api.get('/rooms/my'),
   getById: (id) => api.get(`/rooms/${id}`),
-  create: (name, imageId = null) => api.post('/rooms', { name, image_id: imageId }),
-  update: (id, data) => api.put(`/rooms/${id}`, data),
+  create: (name, imageFile = null) => {
+    const formData = new FormData()
+    formData.append('name', name)
+    if (imageFile) {
+      formData.append('image', imageFile)
+    }
+    return api.post('/rooms', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+  },
+  update: (id, name, imageFile = null, status = null) => {
+    const formData = new FormData()
+    if (name) formData.append('name', name)
+    if (status) formData.append('status', status)
+    if (imageFile) formData.append('image', imageFile)
+    return api.patch(`/rooms/${id}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+  },
   delete: (id) => api.delete(`/rooms/${id}`),
   updateHP: (id, data) => api.patch(`/rooms/${id}/hp`, data),
   getLiveKitToken: (id) => api.post(`/rooms/${id}/livekit-token`),
+  
+  // Карты
   getMaps: (id) => api.get(`/rooms/${id}/maps`),
   addMap: (id, templateId, nameInRoom, file = null) => {
     const formData = new FormData()
@@ -87,8 +110,28 @@ export const roomsAPI = {
   },
   deleteMap: (roomId, mapId) => api.delete(`/rooms/${roomId}/maps/${mapId}`),
   setActiveMap: (id, mapId) => api.patch(`/rooms/${id}/maps/${mapId}/active`),
+  
+  // Токены
   getTokens: (id) => api.get(`/rooms/${id}/tokens`),
   updateTokenPosition: (id, token_id, data) => api.patch(`/rooms/${id}/tokens/${token_id}/position`, data),
+  
+  // Настройки комнаты
+  getSettings: (id) => api.get(`/rooms/${id}/settings`),
+  updateSettings: (id, data) => api.patch(`/rooms/${id}/settings`, data),
+  
+  // Страницы комнаты
+  getPages: (id) => api.get(`/rooms/${id}/pages`),
+  getPage: (id, pageId) => api.get(`/rooms/${id}/pages/${pageId}`),
+  createPage: (id, data) => api.post(`/rooms/${id}/pages`, data),
+  updatePage: (id, pageId, data) => api.put(`/rooms/${id}/pages/${pageId}`, data),
+  deletePage: (id, pageId) => api.delete(`/rooms/${id}/pages/${pageId}`),
+  setActivePage: (id, pageId) => api.post(`/rooms/${id}/pages/${pageId}/set-active`),
+  
+  // Участники
+  getUsers: (id) => api.get(`/rooms/${id}/users`),
+  addUser: (id, userId, role = 'PLAYER') => api.post(`/rooms/${id}/users/${userId}?role=${role}`),
+  removeUser: (id, userId) => api.delete(`/rooms/${id}/users/${userId}`),
+  updateUserRole: (id, userId, role) => api.patch(`/rooms/${id}/users/${userId}/role`, { room_role: role }),
 }
 
 export const mediaAPI = {

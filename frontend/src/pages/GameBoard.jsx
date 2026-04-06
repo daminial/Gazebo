@@ -5,16 +5,27 @@ import { VideoGrid } from '../components/Room/VideoGrid'
 import { ChatPanel } from '../components/Room/ChatPanel'
 import { ImagesPanel } from '../components/Room/ImagesPanel'
 import { MapSelector } from '../components/Room/MapSelector'
+import { PagesDropdown } from '../components/Room/PagesDropdown'
+import { RoomSettingsPanel } from '../components/Room/RoomSettingsPanel'
 import './GameBoard.css'
 
 // Внутренний компонент для контента с доступом к контексту
 function GameBoardContent() {
   const { id } = useParams()
-  const { sendChatMessage, sendDiceRoll, isConnected, tokens } = useRoom()
+  const { sendChatMessage, sendDiceRoll, isConnected, tokens, pages, activePageId, roomSettings } = useRoom()
   const [activeTab, setActiveTab] = useState('chat')
-  const [showGrid, setShowGrid] = useState(true)
   const [chatMessage, setChatMessage] = useState('')
   const [diceResult, setDiceResult] = useState(null)
+
+  // Получаем активную страницу
+  const activePage = pages.find(p => p.id === activePageId)
+
+  // Используем настройки страницы или настройки комнаты по умолчанию
+  const backgroundColor = activePage?.background_color || roomSettings?.background_color || '#FFFFFF'
+  const canvasWidth = activePage?.canvas_width || roomSettings?.canvas_width || 1920
+  const canvasHeight = activePage?.canvas_height || roomSettings?.canvas_height || 1080
+  const gridSize = activePage?.grid_size || roomSettings?.grid_size || 50
+  const gridVisible = roomSettings?.grid_visible ?? true
 
   // Инструменты
   const tools = [
@@ -87,24 +98,24 @@ function GameBoardContent() {
       {/* Main Canvas Area */}
       <main className="canvas-area">
         {/* Map Container */}
-        <div className="map-container">
+        <div className="map-container" style={{ background: backgroundColor }}>
           <MapSelector />
-          <div className={`map-wrapper ${showGrid ? 'show-grid' : ''}`}>
+          <div className={`map-wrapper ${gridVisible ? 'show-grid' : ''}`} style={{
+            width: `${canvasWidth}px`,
+            height: `${canvasHeight}px`
+          }}>
             <ActiveMapImage />
-            <div className="grid-overlay"></div>
+            <div className="grid-overlay" style={{
+              backgroundImage: `
+                linear-gradient(rgba(0, 0, 0, 0.5) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 0, 0, 0.5) 1px, transparent 1px)
+              `,
+              backgroundSize: `${gridSize}px ${gridSize}px`
+            }}></div>
           </div>
 
-          {/* Grid Toggle */}
-          <div className="map-controls">
-            <label className="toggle-control">
-              <input
-                type="checkbox"
-                checked={showGrid}
-                onChange={(e) => setShowGrid(e.target.checked)}
-              />
-              <span>Сетка</span>
-            </label>
-          </div>
+          {/* Кнопка страниц — выезжает сверху */}
+          <PagesDropdown />
         </div>
       </main>
 
@@ -169,12 +180,7 @@ function GameBoardContent() {
             </div>
           )}
 
-          {activeTab === 'settings' && (
-            <div className="tab-placeholder">
-              <h3>Настройки</h3>
-              <p>Настройки игры</p>
-            </div>
-          )}
+          {activeTab === 'settings' && <RoomSettingsPanel />}
         </div>
       </aside>
 
@@ -205,9 +211,17 @@ function GameBoardContent() {
 
 // Компонент отображения активной карты
 function ActiveMapImage() {
-  const { maps, activeMapId } = useRoom()
+  const { maps, activeMapId, pages, activePageId } = useRoom()
 
-  const activeMap = maps.find(m => m.id === activeMapId)
+  // Сначала пытаемся получить карту из активной страницы
+  const activePage = pages.find(p => p.id === activePageId)
+  let activeMap = null
+  
+  if (activePage?.map) {
+    activeMap = activePage.map
+  } else if (activeMapId) {
+    activeMap = maps.find(m => m.id === activeMapId)
+  }
 
   // image_url уже должен быть с /api префиксом из RoomContext
   const imageUrl = activeMap?.image_url
@@ -215,7 +229,7 @@ function ActiveMapImage() {
   if (!activeMap || !imageUrl) {
     return (
       <img
-        src="https://placehold.co/1200x800/2a1a1a/ff4400?text=Game+Map"
+        src="https://placehold.co/1200x800/FFFFFF/CCCCCC?text=Game+Map"
         alt="Game Map"
         className="map-image"
       />

@@ -41,6 +41,7 @@ class RoomSettings(Base):
     is_public = Column(Boolean, default=False)
 
     grid_size = Column(Integer, default=50)
+    grid_visible = Column(Boolean, default=True)
     players_can_draw = Column(Boolean, default=False)
 
     music_volume = Column(Integer, default=70)
@@ -70,6 +71,10 @@ class RoomPage(Base):
     name = Column(String, nullable=False, default="Страница 1")
 
     background_color = Column(String, default="#FFFFFF")
+
+    canvas_width = Column(Integer, default=1920)
+    canvas_height = Column(Integer, default=1080)
+
     grid_size = Column(Integer, default=50)
     grid_visible = Column(Boolean, default=True)
     players_can_draw = Column(Boolean, default=False)

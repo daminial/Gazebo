@@ -14,6 +14,11 @@ export function RoomProvider({ roomId, children }) {
   const [maps, setMaps] = useState([]);
   const [tokens, setTokens] = useState([]);
   const [activeMapId, setActiveMapId] = useState(null);
+  
+  // Страницы и настройки
+  const [pages, setPages] = useState([]);
+  const [activePageId, setActivePageId] = useState(null);
+  const [roomSettings, setRoomSettings] = useState(null);
 
   // Загрузка токена LiveKit
   useEffect(() => {
@@ -31,50 +36,65 @@ export function RoomProvider({ roomId, children }) {
     fetchLiveKitToken();
   }, [roomId]);
 
-  // Загрузка карт и токенов
+  // Загрузка карт, токенов, страниц и настроек
   useEffect(() => {
     async function loadRoomData() {
       try {
-        const [mapsRes, tokensRes] = await Promise.all([
-          roomsAPI.getMaps(roomId),
+        const [roomRes, tokensRes] = await Promise.all([
+          roomsAPI.getById(roomId),
           roomsAPI.getTokens(roomId),
         ]);
 
-        console.log('Maps from server:', mapsRes.data);
+        console.log('Room data from server:', roomRes.data);
 
-        // Добавляем /api префикс к image_url если нужно
-        const mapsWithImages = mapsRes.data.map(map => {
-          let imageUrl = null;
-          
-          if (map.image_url) {
-            // Если URL полный (http://...), оставляем как есть
-            // Если относительный (/media/...), добавляем /api
-            imageUrl = map.image_url.startsWith('http') 
-              ? map.image_url 
-              : (map.image_url.startsWith('/api') 
-                  ? map.image_url 
-                  : `/api${map.image_url}`);
-          } else if (map.template_image_id) {
-            imageUrl = `/api/media/${map.template_image_id}`;
+        // Извлекаем карты из страниц
+        const pagesData = roomRes.data.pages || [];
+        setPages(pagesData);
+        
+        // Загружаем карты для каждой страницы
+        const mapsPromises = pagesData.map(async (page) => {
+          try {
+            const mapsRes = await roomsAPI.getMaps(roomId);
+            const pageMap = mapsRes.data.find(m => m.id === page.map_id);
+            return {
+              ...page,
+              map: pageMap || null
+            };
+          } catch (err) {
+            console.error('Failed to load map for page:', err);
+            return { ...page, map: null };
           }
-          
-          console.log(`Map ${map.id}: image_url=${map.image_url}, template_image_id=${map.template_image_id}, final imageUrl=${imageUrl}`);
-          
-          return {
-            ...map,
-            image_url: imageUrl
-          };
         });
+        
+        const pagesWithMaps = await Promise.all(mapsPromises);
+        setPages(pagesWithMaps);
+        
+        // Устанавливаем активную страницу
+        if (pagesData.length > 0) {
+          const activePage = roomRes.data.active_page_id 
+            ? pagesData.find(p => p.id === roomRes.data.active_page_id)
+            : pagesData[0];
+          setActivePageId(activePage?.id || null);
+          
+          // Если у активной страницы есть карта, устанавливаем её
+          if (activePage?.map) {
+            setActiveMapId(activePage.map.id);
+          }
+        }
 
-        setMaps(mapsWithImages);
+        // Загружаем все карты комнаты для доступа к ним
+        const allMapsRes = await roomsAPI.getMaps(roomId);
+        setMaps(allMapsRes.data);
+
         setTokens(tokensRes.data);
-
-        // Выбираем первую карту активной
-        if (mapsRes.data.length > 0) {
-          setActiveMapId(mapsRes.data[0].id);
+        
+        // Настройки комнаты
+        if (roomRes.data.settings) {
+          setRoomSettings(roomRes.data.settings);
         }
       } catch (err) {
         console.error('Failed to load room data:', err);
+        setError(err);
       } finally {
         setLoading(false);
       }
@@ -183,6 +203,55 @@ export function RoomProvider({ roomId, children }) {
     [sendData]
   );
 
+  // Методы для работы со страницами
+  const setActivePage = useCallback(async (pageId) => {
+    try {
+      await roomsAPI.setActivePage(roomId, pageId);
+      setActivePageId(pageId);
+      
+      // Обновляем активную карту на основе новой страницы
+      const page = pages.find(p => p.id === pageId);
+      if (page?.map) {
+        setActiveMapId(page.map.id);
+      }
+    } catch (err) {
+      console.error('Failed to set active page:', err);
+    }
+  }, [roomId, pages]);
+
+  const createPage = useCallback(async (pageData) => {
+    try {
+      const response = await roomsAPI.createPage(roomId, pageData);
+      setPages(prev => [...prev, response.data]);
+      return response.data;
+    } catch (err) {
+      console.error('Failed to create page:', err);
+      throw err;
+    }
+  }, [roomId]);
+
+  const updatePage = useCallback(async (pageId, pageData) => {
+    try {
+      const response = await roomsAPI.updatePage(roomId, pageId, pageData);
+      setPages(prev => prev.map(p => p.id === pageId ? response.data : p));
+      return response.data;
+    } catch (err) {
+      console.error('Failed to update page:', err);
+      throw err;
+    }
+  }, [roomId]);
+
+  const updateRoomSettings = useCallback(async (settingsData) => {
+    try {
+      const response = await roomsAPI.updateSettings(roomId, settingsData);
+      setRoomSettings(response.data);
+      return response.data;
+    } catch (err) {
+      console.error('Failed to update room settings:', err);
+      throw err;
+    }
+  }, [roomId]);
+
   const value = {
     // LiveKit
     livekitUrl,
@@ -198,6 +267,15 @@ export function RoomProvider({ roomId, children }) {
     tokens,
     activeMapId,
     setActiveMapId,
+    
+    // Страницы и настройки
+    pages,
+    activePageId,
+    setActivePage,
+    roomSettings,
+    updateRoomSettings,
+    createPage,
+    updatePage,
 
     // Состояние
     loading,

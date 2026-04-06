@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { roomsAPI, mediaAPI } from '../api'
+import { roomsAPI } from '../api'
 import Modal from './Modal.jsx'
 import './CreateRoomModal.css'
 
@@ -24,17 +24,7 @@ export default function CreateRoomModal({ isOpen, onClose }) {
     setLoading(true)
 
     try {
-      let imageId = null
-
-      if (imageFile) {
-        const formData = new FormData()
-        formData.append('file', imageFile)
-
-        const { data: imageData } = await mediaAPI.uploadImage(formData)
-        imageId = imageData.id
-      }
-
-      const { data: roomData } = await roomsAPI.create(roomName, imageId)
+      const { data: roomData } = await roomsAPI.create(roomName, imageFile)
       onClose()
       navigate(`/companies/${roomData.id}`)
     } catch (err) {

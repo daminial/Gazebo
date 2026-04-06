@@ -6,16 +6,15 @@ export function MapSelector() {
   const { maps, activeMapId, setActiveMapId } = useRoom()
   const [showMapsList, setShowMapsList] = useState(false)
 
-  // Выбор активной карты
   const handleSelectMap = (mapId) => {
     setActiveMapId(mapId)
+    setShowMapsList(false)
   }
 
   const activeMap = maps.find(m => m.id === activeMapId)
 
   return (
     <div className="map-selector">
-      {/* Текущая карта */}
       <div className="current-map">
         <span className="map-label">Карта:</span>
         {activeMap ? (
@@ -33,7 +32,6 @@ export function MapSelector() {
         )}
       </div>
 
-      {/* Список карт */}
       {showMapsList && maps.length > 1 && (
         <div className="maps-list-dropdown">
           <div className="maps-grid">
