@@ -220,3 +220,26 @@ class TokenConditionsUpdate(BaseModel):
 
 class TokenVisibilityUpdate(BaseModel):
     is_visible: bool
+
+
+# схемы для сообщений чата
+class ChatMessageCreate(BaseModel):
+    content: str = Field(..., min_length=1, max_length=2000)
+    message_type: str = Field(default="text")
+
+
+class ChatMessageResponse(BaseModel):
+    id: int
+    room_id: UUID
+    user_id: Optional[UUID] = None
+    username: Optional[str] = None
+    content: str
+    message_type: str
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ChatMessageListResponse(BaseModel):
+    messages: List[ChatMessageResponse]
+    total: int

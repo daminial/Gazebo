@@ -1,5 +1,6 @@
 from livekit.api import AccessToken, VideoGrants
 from src.core.config import settings
+import json
 
 
 class LiveKitConfig:
@@ -7,19 +8,25 @@ class LiveKitConfig:
         self.api_key = settings.LIVEKIT_API_KEY
         self.api_secret = settings.LIVEKIT_API_SECRET
         self.url = settings.LIVEKIT_URL
-    
-    def create_token(self, room_name: str, participant_name: str, **permissions):
+
+    def create_token(self, room_name: str, participant_name: str, metadata: dict = None, **permissions):
         """
         Создать JWT токен для подключения к комнате LiveKit
-        
+
         :param room_name: Имя комнаты (обычно room_id)
         :param participant_name: Имя участника (user_id или username)
+        :param metadata: Дополнительные данные (username, role и т.д.)
         :param permissions: Права доступа (can_publish, can_subscribe, etc.)
         :return: JWT токен
         """
         token = AccessToken(self.api_key, self.api_secret)
         token.with_identity(participant_name)
         token.with_name(participant_name)
+        
+        # Добавляем metadata если есть
+        if metadata:
+            token.with_metadata(json.dumps(metadata))
+        
         grants = VideoGrants(
             room=room_name,
             room_join=True,

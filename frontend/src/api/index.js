@@ -134,6 +134,14 @@ export const roomsAPI = {
   addUser: (id, userId, role = 'PLAYER') => api.post(`/rooms/${id}/users/${userId}?role=${role}`),
   removeUser: (id, userId) => api.delete(`/rooms/${id}/users/${userId}`),
   updateUserRole: (id, userId, role) => api.patch(`/rooms/${id}/users/${userId}/role`, { room_role: role }),
+
+  // Чат комнаты
+  getChatMessages: (id, limit = 100, offset = 0) => 
+    api.get(`/rooms/${id}/chat/messages`, { params: { limit, offset } }),
+  sendChatMessage: (id, messageData) => 
+    api.post(`/rooms/${id}/chat/messages`, messageData),
+  bulkSaveChatMessages: (id, messages) => 
+    api.post(`/rooms/${id}/chat/messages/bulk`, messages),
 }
 
 export const mediaAPI = {

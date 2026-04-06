@@ -1,10 +1,12 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { roomsAPI } from '../api';
 import { useLiveKit } from '../hooks/useLiveKit';
+import { useAuth } from './AuthContext';
 
 const RoomContext = createContext(null);
 
 export function RoomProvider({ roomId, children }) {
+  const { user } = useAuth();
   const [livekitToken, setLivekitToken] = useState(null);
   const [livekitUrl, setLivekitUrl] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -90,6 +92,31 @@ export function RoomProvider({ roomId, children }) {
     loadRoomData();
   }, [roomId]);
 
+  // Загрузка истории чата при подключении
+  const [chatMessages, setChatMessages] = useState([]);
+  
+  useEffect(() => {
+    async function loadChatHistory() {
+      try {
+        const response = await roomsAPI.getChatMessages(roomId, 100);
+        const messages = response.data.messages.map(msg => ({
+          id: msg.id,
+          content: msg.content,
+          sender: msg.username || 'Неизвестный',
+          timestamp: new Date(msg.created_at),
+          isOwn: msg.user_id === null, // Будет обновлено после подключения
+          userId: msg.user_id,
+          messageType: msg.message_type,
+        }));
+        setChatMessages(messages);
+      } catch (err) {
+        console.error('Failed to load chat history:', err);
+      }
+    }
+
+    loadChatHistory();
+  }, [roomId]);
+
   // Подключение к LiveKit
   const {
     room,
@@ -119,8 +146,38 @@ export function RoomProvider({ roomId, children }) {
 
         case 'game:chat':
           if (data.type === 'chat:message') {
-            // Обработка сообщения чата
-            console.log('Chat message:', data.payload);
+            // Пропускаем собственные сообщения (они уже добавлены при отправке)
+            if (participant?.identity === localParticipant?.identity) {
+              break;
+            }
+            
+            // Получаем имя пользователя из metadata токена
+            let senderName = 'Неизвестный';
+            try {
+              if (participant?.metadata) {
+                const metadata = JSON.parse(participant.metadata);
+                senderName = metadata.username || participant.identity;
+              } else {
+                senderName = participant?.identity || 'Неизвестный';
+              }
+            } catch (e) {
+              console.warn('Failed to parse participant metadata:', e);
+              senderName = participant?.identity || 'Неизвестный';
+            }
+            
+            console.log('Chat message from:', senderName, data.payload);
+            // Добавляем сообщение в локальное состояние
+            setChatMessages((prev) => [
+              ...prev,
+              {
+                id: Date.now(),
+                content: data.payload.content,
+                sender: senderName,
+                timestamp: new Date(),
+                isOwn: false,
+                messageType: data.payload.message_type || 'text',
+              },
+            ]);
           }
           break;
 
@@ -165,7 +222,22 @@ export function RoomProvider({ roomId, children }) {
   );
 
   const sendChatMessage = useCallback(
-    (content, message_type = 'text') => {
+    async (content, message_type = 'text') => {
+      // Сразу добавляем в локальный state (чтобы видеть мгновенно)
+      const tempId = Date.now();
+      setChatMessages((prev) => [
+        ...prev,
+        {
+          id: tempId,
+          content,
+          sender: user?.username || 'Вы',
+          timestamp: new Date(),
+          isOwn: true,
+          messageType: message_type,
+        },
+      ]);
+
+      // Отправляем через LiveKit (для других участников)
       sendData(
         {
           type: 'chat:message',
@@ -173,8 +245,25 @@ export function RoomProvider({ roomId, children }) {
         },
         'game:chat'
       );
+
+      // Сохраняем в БД
+      try {
+        const response = await roomsAPI.sendChatMessage(roomId, {
+          content,
+          message_type
+        });
+        
+        // Заменяем временный ID на реальный из БД
+        setChatMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === tempId ? { ...msg, id: response.data.id } : msg
+          )
+        );
+      } catch (err) {
+        console.error('Failed to save chat message:', err);
+      }
     },
-    [sendData]
+    [sendData, roomId, user]
   );
 
   const sendDiceRoll = useCallback(
@@ -315,7 +404,11 @@ export function RoomProvider({ roomId, children }) {
     tokens,
     activeMapId,
     setActiveMapId,
-    
+
+    // Чат
+    chatMessages,
+    setChatMessages,
+
     // Страницы и настройки
     pages,
     activePageId,

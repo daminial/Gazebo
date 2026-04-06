@@ -98,6 +98,26 @@ class RoomPage(Base):
                           primaryjoin="RoomPage.id == RoomToken.page_id")
 
 
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    room_id = Column(UUID(as_uuid=True),
+                     ForeignKey("rooms.id", ondelete="CASCADE"),
+                     nullable=False)
+    user_id = Column(UUID(as_uuid=True),
+                     ForeignKey("users.id", ondelete="SET NULL"),
+                     nullable=True)
+    
+    content = Column(String, nullable=False)
+    message_type = Column(String, default="text")  # text, dice, system, etc.
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    room = relationship("Room", foreign_keys=[room_id])
+    user = relationship("User", foreign_keys=[user_id])
+
+
 class Room(Base):
     __tablename__ = "rooms"
 
@@ -148,6 +168,12 @@ class Room(Base):
     tokens = relationship("RoomToken", back_populates="room",
                           cascade="all, delete-orphan",
                           foreign_keys="RoomToken.room_id")
+
+    chat_messages = relationship("ChatMessage",
+                                 back_populates="room",
+                                 cascade="all, delete-orphan",
+                                 foreign_keys="ChatMessage.room_id",
+                                 order_by="ChatMessage.created_at")
 
     # audio_players = relationship("RoomAudioPlayer", back_populates="room",
     #                              cascade="all, delete-orphan",

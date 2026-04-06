@@ -1,6 +1,6 @@
 from io import BytesIO
 
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 from typing import Optional, List
@@ -14,11 +14,12 @@ from src.core.storage.schemas import ImageCreate, MediaType
 from src.core.storage.service import MediaService
 from src.map.schemas import RoomMapListItem
 from src.rooms.exceptions import RoomPermissionError, RoomAccessError
-from src.rooms.models import Room, RoomUsers, RoomRole, RoomSettings, RoomPage
+from src.rooms.models import Room, RoomUsers, RoomRole, RoomSettings, RoomPage, ChatMessage
 from src.auth.models import User
 from src.map.models import RoomMap, MapTemplate
 from src.bestiary.models import RoomToken, CreatureTemplate
-from src.rooms.schemas import RoomUserListItem, RoomSettingsCreate, RoomSettingsUpdate, RoomPageCreate, RoomPageUpdate
+from src.rooms.schemas import RoomUserListItem, RoomSettingsCreate, RoomSettingsUpdate, RoomPageCreate, RoomPageUpdate, ChatMessageCreate, ChatMessageResponse, ChatMessageListResponse
+from sqlalchemy import select, func, text
 
 class RoomService:
     def __init__(self, db: AsyncSession, media_service: Optional[MediaService] = None):
@@ -628,3 +629,90 @@ class RoomService:
 
         page.background_image_id = None
         await self.db.flush()
+
+    # Работа с сообщениями чата
+    async def save_chat_message(
+            self,
+            room_id: UUID,
+            user_id: UUID,
+            message_data: ChatMessageCreate
+    ) -> ChatMessage:
+        """Сохранить сообщение чата в БД"""
+        chat_message = ChatMessage(
+            room_id=room_id,
+            user_id=user_id,
+            content=message_data.content,
+            message_type=message_data.message_type
+        )
+        self.db.add(chat_message)
+        await self.db.flush()
+        await self.db.refresh(chat_message)
+        return chat_message
+
+    async def get_chat_messages(
+            self,
+            room_id: UUID,
+            limit: int = 100,
+            offset: int = 0
+    ) -> ChatMessageListResponse:
+        """Получить историю сообщений чата для комнаты"""
+        # Подсчет общего количества
+        count_query = select(func.count(ChatMessage.id)).filter_by(room_id=room_id)
+        count_result = await self.db.execute(count_query)
+        total = count_result.scalar()
+
+        # Получение сообщений
+        query = (
+            select(ChatMessage, User.username)
+            .outerjoin(User, ChatMessage.user_id == User.id)
+            .filter(ChatMessage.room_id == room_id)
+            .order_by(ChatMessage.created_at.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        result = await self.db.execute(query)
+        rows = result.all()
+
+        messages = [
+            ChatMessageResponse(
+                id=msg.id,
+                room_id=msg.room_id,
+                user_id=msg.user_id,
+                username=username,
+                content=msg.content,
+                message_type=msg.message_type,
+                created_at=msg.created_at
+            )
+            for msg, username in rows
+        ]
+
+        # Разворачиваем чтобы сообщения шли по возрастанию времени
+        messages.reverse()
+
+        return ChatMessageListResponse(
+            messages=messages,
+            total=total
+        )
+
+    async def bulk_save_chat_messages(
+            self,
+            room_id: UUID,
+            messages: list[dict]
+    ) -> int:
+        """Массовое сохранение сообщений чата (для автосохранения)"""
+        if not messages:
+            return 0
+
+        chat_messages = [
+            ChatMessage(
+                room_id=room_id,
+                user_id=msg.get('user_id'),
+                content=msg['content'],
+                message_type=msg.get('message_type', 'text'),
+                created_at=msg.get('created_at')
+            )
+            for msg in messages
+        ]
+        self.db.add_all(chat_messages)
+        await self.db.flush()
+        return len(chat_messages)

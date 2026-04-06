@@ -20,7 +20,8 @@ from src.rooms.schemas import (RoomResponse, RoomUserListItem,
                                RoomUserResponse, RoomUserUpdate, RoomTokenBasicInfo,
                                TokenPositionUpdate, TokenHPUpdate, TokenConditionsUpdate, TokenVisibilityUpdate,
                                LiveKitTokenResponse, RoomSettingsResponse, RoomSettingsUpdate,
-                               RoomPageResponse, RoomPageCreate, RoomPageUpdate, RoomPageListItem, RoomListItem)
+                               RoomPageResponse, RoomPageCreate, RoomPageUpdate, RoomPageListItem, RoomListItem,
+                               ChatMessageCreate, ChatMessageListResponse)
 from src.rooms.enum import RoomStatus
 
 router = APIRouter(prefix="/rooms", tags=["rooms"], redirect_slashes=False)
@@ -683,3 +684,69 @@ async def remove_page_background(
 
     await service.remove_page_background_image(page_id)
     return {"message": "Фоновое изображение удалено"}
+
+
+# Управление сообщениями чата
+@router.post("/{room_id}/chat/messages", status_code=201)
+async def create_chat_message(
+        room_id: UUID,
+        message_data: ChatMessageCreate,
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_user)
+):
+    """Отправить и сохранить сообщение чата"""
+    service = RoomService(db)
+
+    if not await service.is_in_room(room_id, current_user.id):
+        raise HTTPException(403, "Вы не в этой комнате")
+
+    saved_message = await service.save_chat_message(
+        room_id=room_id,
+        user_id=current_user.id,
+        message_data=message_data
+    )
+    
+    return {
+        "id": saved_message.id,
+        "room_id": saved_message.room_id,
+        "user_id": saved_message.user_id,
+        "username": current_user.username,
+        "content": saved_message.content,
+        "message_type": saved_message.message_type,
+        "created_at": saved_message.created_at
+    }
+
+
+@router.get("/{room_id}/chat/messages", response_model=ChatMessageListResponse)
+async def get_chat_messages(
+        room_id: UUID,
+        limit: int = 100,
+        offset: int = 0,
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_user)
+):
+    """Получить историю сообщений чата"""
+    service = RoomService(db)
+
+    if not await service.is_in_room(room_id, current_user.id):
+        raise HTTPException(403, "Вы не в этой комнате")
+
+    messages = await service.get_chat_messages(room_id, limit, offset)
+    return messages
+
+
+@router.post("/{room_id}/chat/messages/bulk")
+async def bulk_save_chat_messages(
+        room_id: UUID,
+        messages: list[dict],
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_user)
+):
+    """Массовое сохранение сообщений чата (для автосохранения при закрытии)"""
+    service = RoomService(db)
+
+    if not await service.is_dm(room_id, current_user.id):
+        raise HTTPException(403, "Только DM может сохранять историю чата")
+
+    count = await service.bulk_save_chat_messages(room_id, messages)
+    return {"message": f"Сохранено {count} сообщений"}

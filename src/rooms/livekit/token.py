@@ -35,9 +35,10 @@ def generate_livekit_token(
     token = livekit_config.create_token(
         room_name=str(room_id),
         participant_name=participant_name,
+        metadata=metadata,
         **permissions
     )
-    
+
     return token
 
 

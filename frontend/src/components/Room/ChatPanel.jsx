@@ -3,9 +3,8 @@ import { useRoom } from '../../context/RoomContext';
 import './ChatPanel.css';
 
 export function ChatPanel() {
-  const { sendChatMessage, isConnected } = useRoom();
+  const { sendChatMessage, isConnected, chatMessages } = useRoom();
   const [message, setMessage] = useState('');
-  const [messages, setMessages] = useState([]);
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -14,23 +13,17 @@ export function ChatPanel() {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [chatMessages]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (message.trim() && isConnected) {
-      sendChatMessage(message.trim());
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now(),
-          content: message.trim(),
-          sender: 'Вы',
-          timestamp: new Date(),
-          isOwn: true,
-        },
-      ]);
-      setMessage('');
+      try {
+        await sendChatMessage(message.trim());
+        setMessage('');
+      } catch (err) {
+        console.error('Failed to send message:', err);
+      }
     }
   };
 
@@ -41,14 +34,14 @@ export function ChatPanel() {
       </div>
 
       <div className="chat-messages">
-        {messages.length === 0 ? (
+        {chatMessages.length === 0 ? (
           <div className="chat-empty">
             <p>Сообщений пока нет</p>
             <p className="chat-hint">Отправьте первое сообщение!</p>
           </div>
         ) : (
           <>
-            {messages.map((msg) => (
+            {chatMessages.map((msg) => (
               <div
                 key={msg.id}
                 className={`chat-message ${msg.isOwn ? 'own' : ''}`}
