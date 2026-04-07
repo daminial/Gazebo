@@ -187,7 +187,23 @@ export function VideoGrid() {
 function VideoTile({ trackRef, isMain, isCameraEnabled, isMicEnabled, onToggleCamera, onToggleMicrophone }) {
   const { participant, publication, track } = trackRef;
   const isLocal = participant.isLocal;
-  const username = participant.name || participant.identity || 'Unknown';
+
+  // Получаем username из metadata токена (в identity лежит user_id)
+  const getUsernameFromMetadata = (p) => {
+    try {
+      if (p?.metadata) {
+        const meta = typeof p.metadata === 'string'
+          ? JSON.parse(p.metadata)
+          : p.metadata;
+        return meta.username || p.identity || 'Unknown';
+      }
+    } catch (e) {
+      console.warn('Failed to parse metadata:', e);
+    }
+    return p?.identity || 'Unknown';
+  };
+
+  const username = isLocal ? 'Вы' : getUsernameFromMetadata(participant);
   const videoRef = React.useRef(null);
   const isVideoMuted = publication?.isMuted ?? false;
   

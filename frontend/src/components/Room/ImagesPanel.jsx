@@ -4,7 +4,7 @@ import { roomsAPI, mapTemplatesAPI } from '../../api'
 import './ImagesPanel.css'
 
 export function ImagesPanel() {
-  const { roomId, maps, setMaps } = useRoom()
+  const { roomId, maps, setMaps, syncMapAdded, syncMapDeleted } = useRoom()
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [showTemplatesModal, setShowTemplatesModal] = useState(false)
   const [templates, setTemplates] = useState([])
@@ -80,6 +80,9 @@ export function ImagesPanel() {
       }
       setMaps(prev => [...prev, mapWithImage])
 
+      // Синхронизируем с другими участниками
+      syncMapAdded(mapWithImage)
+
       setShowUploadModal(false)
       setMapName('')
       setMapDescription('')
@@ -101,12 +104,16 @@ export function ImagesPanel() {
         : (template.image_url?.startsWith('/api')
             ? template.image_url
             : `/api${template.image_url}`)
-      
+
       const mapWithImage = {
         ...data,
         image_url: imageUrl
       }
       setMaps(prev => [...prev, mapWithImage])
+
+      // Синхронизируем
+      syncMapAdded(mapWithImage)
+
       setShowTemplatesModal(false)
     } catch (err) {
       console.error('Failed to add template to room:', err)
@@ -122,6 +129,9 @@ export function ImagesPanel() {
     try {
       await roomsAPI.deleteMap(roomId, mapId)
       setMaps(prev => prev.filter(m => m.id !== mapId))
+
+      // Синхронизируем
+      syncMapDeleted(mapId)
     } catch (err) {
       console.error('Failed to delete map:', err)
       alert('Ошибка удаления карты')

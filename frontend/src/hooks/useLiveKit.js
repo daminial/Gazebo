@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Room, RoomEvent, DataPacket_Kind } from 'livekit-client';
 
 export function useLiveKit(roomId, token, url) {
@@ -6,6 +6,7 @@ export function useLiveKit(roomId, token, url) {
   const [isConnected, setIsConnected] = useState(false);
   const [participants, setParticipants] = useState(new Map());
   const [error, setError] = useState(null);
+  const onDataRef = useRef(null);
 
   // Подключение к комнате
   const connect = useCallback(async () => {
@@ -14,10 +15,11 @@ export function useLiveKit(roomId, token, url) {
     const newRoom = new Room();
 
     try {
-      await newRoom.connect(url, token, {
-        adaptiveStream: true,
-        dynacast: true,
-      });
+        await newRoom.connect(url, token, {
+          adaptiveStream: true,
+          dynacast: true,
+          forceTCP: true,
+        });
 
       setIsConnected(true);
       setRoom(newRoom);
@@ -56,6 +58,13 @@ export function useLiveKit(roomId, token, url) {
         console.log('Reconnected to LiveKit');
       });
 
+      // Подписка на входящие данные (data channel)
+      newRoom.on(RoomEvent.DataReceived, (payload, participant, kind, topic) => {
+        if (onDataRef.current) {
+          onDataRef.current(payload, participant, kind, topic);
+        }
+      });
+
     } catch (err) {
       setError(err);
       console.error('LiveKit connection error:', err);
@@ -77,11 +86,16 @@ export function useLiveKit(roomId, token, url) {
     if (!room || !room.localParticipant) return;
 
     const payload = typeof data === 'string' ? data : JSON.stringify(data);
-    room.localParticipant.publishData(payload, {
+    room.localParticipant.publishData(new TextEncoder().encode(payload), {
       topic,
       kind: DataPacket_Kind.RELIABLE,
     });
   }, [room]);
+
+  // Установка обработчика данных извне (через RoomContext)
+  const setOnData = useCallback((handler) => {
+    onDataRef.current = handler;
+  }, []);
 
   // Авто-подключение при изменении токена
   useEffect(() => {
@@ -103,5 +117,6 @@ export function useLiveKit(roomId, token, url) {
     connect,
     disconnect,
     sendData,
+    setOnData,
   };
 }
