@@ -17,7 +17,7 @@ from src.rooms.exceptions import RoomPermissionError, RoomAccessError
 from src.rooms.models import Room, RoomUsers, RoomRole, RoomSettings, RoomPage, ChatMessage
 from src.auth.models import User
 from src.map.models import RoomMap, MapTemplate
-from src.bestiary.models import RoomToken, CreatureTemplate
+from src.bestiary.models import RoomToken, CreatureTemplate, TokenType
 from src.rooms.schemas import RoomUserListItem, RoomSettingsCreate, RoomSettingsUpdate, RoomPageCreate, RoomPageUpdate, ChatMessageCreate, ChatMessageResponse, ChatMessageListResponse
 from sqlalchemy import select, func, text
 
@@ -347,6 +347,36 @@ class RoomService:
             **token_dict
         )
         self.db.add(token)
+        return token
+
+    async def create_prop_token(
+            self,
+            room_id: UUID,
+            image_id: int,
+            name: str,
+            position_x: float = 0,
+            position_y: float = 0,
+            width: int = None,
+            height: int = None,
+            user: User = None
+    ) -> RoomToken:
+        """Создать prop-токен (просто изображение без статов)"""
+        room = await self.get_room(room_id)
+        if not await self.is_dm(room_id, user.id):
+            raise RoomPermissionError("Только DM может добавлять объекты на поле")
+
+        token = RoomToken(
+            room_id=room_id,
+            image_id=image_id,
+            name_in_room=name,
+            position_x=position_x,
+            position_y=position_y,
+            width=width,
+            height=height,
+            token_type=TokenType.PROP
+        )
+        self.db.add(token)
+        await self.db.flush()
         return token
 
     async def delete_token(self, token_id: int) -> None:

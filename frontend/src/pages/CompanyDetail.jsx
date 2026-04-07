@@ -33,13 +33,6 @@ export default function CompanyDetail() {
 
   return (
     <div className="company-detail">
-      {/* Header */}
-      <header className="company-header">
-        <div className="logo">
-          <div className="logo-icon"></div>
-          <span>Logo</span>
-        </div>
-      </header>
 
       {/* Main Content */}
       <main className="company-main">
@@ -56,7 +49,7 @@ export default function CompanyDetail() {
           {/* Action Buttons */}
           <div className="company-actions">
             <button className="btn btn-launch" onClick={handleLaunchGame}>
-              🎲 Запуск игры
+               Запуск игры
             </button>
             <button className="btn btn-settings">
               ⚙ Настройки

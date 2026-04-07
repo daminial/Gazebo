@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
+import { FaEye, FaEyeSlash } from 'react-icons/fa'
 import './Auth.css'
 
 export default function Register() {
@@ -12,6 +13,8 @@ export default function Register() {
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const { register } = useAuth()
   const navigate = useNavigate()
 
@@ -53,8 +56,7 @@ export default function Register() {
     <div className="auth-page">
       <header className="auth-header">
         <div className="logo">
-          <div className="logo-icon"></div>
-          <span>Logo</span>
+          <span>Meetgazebo</span>
         </div>
       </header>
 
@@ -74,7 +76,7 @@ export default function Register() {
             </div>
             <div className="form-group">
               <input
-                type="text"
+                type="username"
                 name="username"
                 value={formData.username}
                 onChange={handleChange}
@@ -83,24 +85,42 @@ export default function Register() {
               />
             </div>
             <div className="form-group">
-              <input
-                type="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                required
-                placeholder="Пароль"
-              />
+              <div className="password-input-wrapper">
+                <input
+                  type={showPassword ? '' : 'password'}
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  required
+                  placeholder="Пароль"
+                />
+                <button
+                  type="button"
+                  className="password-toggle"
+                  onMouseDown={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? <FaEyeSlash /> : <FaEye />}
+                </button>
+              </div>
             </div>
             <div className="form-group">
-              <input
-                type="password"
-                name="confirmPassword"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                required
-                placeholder="Подтверждение пароля"
-              />
+              <div className="password-input-wrapper">
+                <input
+                  type={showConfirmPassword ? '' : 'password'}
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  required
+                  placeholder="Подтверждение пароля"
+                />
+                <button
+                  type="button"
+                  className="password-toggle"
+                  onMouseDown={() => setShowConfirmPassword(!showConfirmPassword)}
+                >
+                  {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
+                </button>
+              </div>
             </div>
 
             {error && <p className="error-message">{error}</p>}

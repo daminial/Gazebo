@@ -13,6 +13,23 @@ export function ImagesPanel() {
   const [mapName, setMapName] = useState('')
   const [mapDescription, setMapDescription] = useState('')
 
+  // Обработчик начала перетаскивания изображения
+  const handleDragStart = (e, map) => {
+    const imageUrl = map.image_url?.startsWith('http')
+      ? map.image_url
+      : (map.image_url?.startsWith('/api')
+          ? map.image_url
+          : `/api${map.image_url}`)
+    
+    e.dataTransfer.setData('application/json', JSON.stringify({
+      type: 'prop',
+      imageId: map.image_id || map.template_image_id,
+      imageUrl: imageUrl,
+      name: map.name_in_room || map.template_name || 'Объект'
+    }))
+    e.dataTransfer.effectAllowed = 'copy'
+  }
+
   // Загрузка шаблонов при открытии модалки
   useEffect(() => {
     if (showTemplatesModal) {
@@ -144,16 +161,25 @@ export function ImagesPanel() {
               <div
                 key={map.id}
                 className={`map-card`}
+                draggable
+                onDragStart={(e) => handleDragStart(e, map)}
+                onDragEnd={(e) => {
+                  e.currentTarget.style.opacity = '1'
+                }}
+                onDrag={(e) => {
+                  e.currentTarget.style.opacity = '0.5'
+                }}
               >
                 <div className="map-card-image">
                   {map.image_url ? (
-                    <img src={map.image_url} alt={map.name_in_room || map.template_name} />
+                    <img src={map.image_url} alt={map.name_in_room || map.template_name} draggable={false} />
                   ) : (
                     <div className="map-placeholder">🗺️</div>
                   )}
                 </div>
                 <div className="map-card-info">
                   <span className="map-title">{map.name_in_room || map.template_name || 'Карта'}</span>
+                  <span className="map-drag-hint">⋮⋮ перетащите</span>
                 </div>
                 <button
                   className="btn-delete-map"

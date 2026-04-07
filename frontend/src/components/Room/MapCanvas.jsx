@@ -10,9 +10,11 @@ export function MapCanvas({ activeTool = 'select', canvasWidth, canvasHeight, gr
   const {
     maps, activeMapId, pages, activePageId,
     setPageBackground, removePageBackground,
+    tokens, setTokens, sendTokenMove, roomId, createPropToken,
   } = useRoom()
   const [showContextMenu, setShowContextMenu] = useState(null)
   const [showBgPicker, setShowBgPicker] = useState(false)
+  const [draggedImage, setDraggedImage] = useState(null)
 
   // Pan & Zoom state
   const [panX, setPanX] = useState(0)

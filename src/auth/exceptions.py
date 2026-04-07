@@ -19,14 +19,14 @@ class InvalidCredentialsException(AuthException):
     def __init__(self):
         super().__init__(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password"
+            detail="Неверный логин или пароль"
         )
 
 class EmailAlreadyExistsException(AuthException):
     def __init__(self):
         super().__init__(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="User with this email already exists"
+            detail="Пользователь с таким email уже существует"
         )
 
 
@@ -34,7 +34,7 @@ class UsernameAlreadyExistsException(AuthException):
     def __init__(self):
         super().__init__(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="User with this username already exists"
+            detail="Пользователь с таким именем уже существует"
         )
 
 
@@ -42,7 +42,7 @@ class TokenExpiredException(AuthException):
     def __init__(self):
         super().__init__(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token has expired"
+            detail="Срок действия токена истёк"
         )
 
 
@@ -50,5 +50,5 @@ class InactiveUserException(AuthException):
     def __init__(self):
         super().__init__(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Inactive user"
+            detail="Учётная запись отключена"
         )

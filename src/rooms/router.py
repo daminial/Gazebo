@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, Form, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 
-from src.bestiary.schemas import RoomTokenResponse, RoomTokenCreate
+from src.bestiary.schemas import RoomTokenResponse, RoomTokenCreate, RoomTokenPropCreate
 from src.core.config import settings
 from src.core.database import get_db
 from src.auth.dependencies import get_current_user
@@ -337,6 +337,32 @@ async def create_token(
         raise HTTPException(403, "Вы не в этой комнате")
 
     token = await service.add_token_to_room(room_id, token_data, current_user)
+    return token
+
+
+@router.post("/{room_id}/tokens/prop", response_model=RoomTokenResponse, status_code=201)
+async def create_prop_token(
+        room_id: UUID,
+        prop_data: RoomTokenPropCreate,
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_user)
+):
+    """Создать prop-токен (просто изображение на поле)"""
+    service = RoomService(db)
+
+    if not await service.is_in_room(room_id, current_user.id):
+        raise HTTPException(403, "Вы не в этой комнате")
+
+    token = await service.create_prop_token(
+        room_id=room_id,
+        image_id=prop_data.image_id,
+        name=prop_data.name_in_room,
+        position_x=prop_data.position_x,
+        position_y=prop_data.position_y,
+        width=prop_data.width,
+        height=prop_data.height,
+        user=current_user
+    )
     return token
 
 @router.get("/{room_id}/tokens", response_model=List[RoomTokenBasicInfo])

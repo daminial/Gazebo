@@ -114,6 +114,7 @@ export const roomsAPI = {
   // Токены
   getTokens: (id) => api.get(`/rooms/${id}/tokens`),
   updateTokenPosition: (id, token_id, data) => api.patch(`/rooms/${id}/tokens/${token_id}/position`, data),
+  createPropToken: (id, data) => api.post(`/rooms/${id}/tokens/prop`, data),
   
   // Настройки комнаты
   getSettings: (id) => api.get(`/rooms/${id}/settings`),

@@ -17,8 +17,7 @@ export default function Layout() {
       <header className="header">
         <div className="header-top">
           <Link to="/" className="logo">
-            <div className="logo-icon"></div>
-            <span>Logo</span>
+            <span>Meetgazebo</span>
           </Link>
         </div>
       </header>
