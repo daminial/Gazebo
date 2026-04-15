@@ -92,6 +92,16 @@ class RoomTokenCreate(RoomTokenBase):
     controlled_by: Optional[UUID] = None
 
 
+class RoomTokenPropCreate(BaseModel):
+    """Схема для создания prop-токена (изображение на поле)"""
+    image_id: int
+    name_in_room: str = Field(..., min_length=1, max_length=255)
+    position_x: float = 0
+    position_y: float = 0
+    width: Optional[int] = Field(None, gt=0)
+    height: Optional[int] = Field(None, gt=0)
+
+
 class RoomTokenUpdate(BaseModel):
     name_in_room: Optional[str] = Field(None, min_length=1, max_length=255)
     position_x: Optional[float] = None

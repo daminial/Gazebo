@@ -1,5 +1,6 @@
 """Создаем модели для существ"""
 
+from enum import Enum as PyEnum
 from sqlalchemy import (
     Column, Integer, String, ForeignKey,
     Boolean, Float, DateTime, func, JSON,
@@ -9,6 +10,12 @@ from sqlalchemy.dialects.postgresql import UUID
 from src.core.database import Base
 
 from src.bestiary.enum import CreatureType, CreatureSize
+
+
+class TokenType(PyEnum):
+    """Тип токена в комнате"""
+    CREATURE = "creature"
+    PROP = "prop"
 
 
 class CreatureTemplate(Base):
@@ -52,6 +59,9 @@ class RoomToken(Base):
     room_id = Column(UUID(as_uuid=True),
                      ForeignKey("rooms.id", ondelete="CASCADE"),
                      nullable=False)
+    page_id = Column(Integer,
+                     ForeignKey("room_pages.id", ondelete="CASCADE"),
+                     nullable=True)
     creature_template_id = Column(Integer,
                                   ForeignKey("creature_templates.id", ondelete="SET NULL"),
                                   nullable=True)
@@ -77,6 +87,7 @@ class RoomToken(Base):
     conditions = Column(ARRAY(String), nullable=False, default=list, server_default='{}')
 
     room = relationship("Room", back_populates="tokens")
+    page = relationship("RoomPage", back_populates="tokens")
     creature_template = relationship("CreatureTemplate", back_populates="room_instances")
     controller = relationship("User", foreign_keys=[controlled_by])
 

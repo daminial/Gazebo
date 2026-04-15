@@ -1,6 +1,24 @@
 version: '3.8'
 
 services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: gazebo_postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: gazebo
+      POSTGRES_PASSWORD: gazebo
+      POSTGRES_DB: gazebo
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gazebo"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
   minio:
     image: minio/minio:latest
     container_name: gazebo_minio
@@ -15,3 +33,15 @@ services:
       - ./minio_data:/data
     command: server /data --console-address ":9001"
     restart: unless-stopped
+
+  livekit:
+    image: livekit/livekit-server:latest
+    container_name: gazebo_livekit
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ./livekit-config.yaml:/app/config.yaml:ro
+    command: --config /app/config.yaml
+
+volumes:
+  postgres_data:

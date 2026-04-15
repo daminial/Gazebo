@@ -43,6 +43,8 @@ export function MapCanvas({ activeTool = 'select', canvasWidth, canvasHeight, gr
     .map(m => ({ id: m.image_id || m.template_image_id, url: m.image_url, name: m.name_in_room || 'Карта' }))
     .filter((img, i, arr) => arr.findIndex(x => x.url === img.url) === i)
 
+  const canvasRef = useRef(null)
+
   // Zoom with wheel (приближение к курсору)
   const handleWheel = useCallback((e) => {
     e.preventDefault()
@@ -59,6 +61,14 @@ export function MapCanvas({ activeTool = 'select', canvasWidth, canvasHeight, gr
     setPanY(mouseY - scale * (mouseY - panY))
     setZoom(newZoom)
   }, [zoom, panX, panY])
+
+  // Register wheel handler with passive: false
+  useEffect(() => {
+    const el = canvasRef.current
+    if (!el) return
+    el.addEventListener('wheel', handleWheel, { passive: false })
+    return () => el.removeEventListener('wheel', handleWheel)
+  }, [handleWheel])
 
   // Pan with mouse
   const handleMouseDown = useCallback((e) => {
@@ -160,12 +170,12 @@ export function MapCanvas({ activeTool = 'select', canvasWidth, canvasHeight, gr
     return (
       <div
         className="map-viewport"
+        ref={canvasRef}
         style={{
           cursor: viewportCursor,
           background: activePage?.background_color || '#FFFFFF',
         }}
         onContextMenu={handleContextMenu}
-        onWheel={handleWheel}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
       >
@@ -247,8 +257,8 @@ export function MapCanvas({ activeTool = 'select', canvasWidth, canvasHeight, gr
   return (
     <div
       className="map-viewport"
+      ref={canvasRef}
       style={{ cursor: viewportCursor }}
-      onWheel={handleWheel}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onContextMenu={handleContextMenu}
