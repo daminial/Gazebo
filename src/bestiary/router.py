@@ -19,9 +19,9 @@ from src.bestiary.schemas import (
 )
 from src.bestiary.exceptions import TemplateNotFoundError, TemplatePermissionError
 
-router = APIRouter(prefix="/bestiary/templates", tags=["bestiary"], redirect_slashes=False)
+router = APIRouter(prefix="/bestiary", tags=["bestiary"], redirect_slashes=False)
 
-@router.post("", response_model=CreatureTemplateResponse)
+@router.post("/templates", response_model=CreatureTemplateResponse)
 async def create_creature_template(
     file: UploadFile = File(...),
     model_data: CreatureTemplateCreate = Depends(json_form(CreatureTemplateCreate)),
@@ -55,6 +55,16 @@ async def create_creature_template(
     )
     return template
 
+@router.get("", response_model=List[CreatureTemplateListItem])
+async def get_all_templates(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Получить все публичные шаблоны существ"""
+    template_service = service.CreatureTemplateService(db=db)
+    templates = await template_service.get_all_public_templates()
+    return templates
+
 @router.get("/my", response_model=List[CreatureTemplateListItem])
 async def get_my_templates(
     db: AsyncSession = Depends(get_db),
@@ -65,7 +75,7 @@ async def get_my_templates(
     templates = await template_service.get_user_templates(current_user.id)
     return templates
 
-@router.get("/{template_id}", response_model=CreatureTemplateResponse)
+@router.get("/templates/{template_id}", response_model=CreatureTemplateResponse)
 async def get_template(
     template_id: int,
     db: AsyncSession = Depends(get_db),
@@ -75,7 +85,7 @@ async def get_template(
     template = await template_service.get_template(template_id)
     return template
 
-@router.put("/{template_id}", response_model=CreatureTemplateResponse)
+@router.put("/templates/{template_id}", response_model=CreatureTemplateResponse)
 async def update_template(
     template_id: int,
     template_data: CreatureTemplateUpdate,
@@ -90,7 +100,7 @@ async def update_template(
     )
     return template
 
-@router.delete("/{template_id}")
+@router.delete("/templates/{template_id}")
 async def delete_template(
     template_id: int,
     db: AsyncSession = Depends(get_db),

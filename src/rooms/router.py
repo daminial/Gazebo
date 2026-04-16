@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, Form, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 
+from src.bestiary.models import RoomToken
 from src.bestiary.schemas import RoomTokenResponse, RoomTokenCreate, RoomTokenPropCreate
 from src.core.config import settings
 from src.core.database import get_db
@@ -364,6 +365,93 @@ async def create_prop_token(
         user=current_user
     )
     return token
+
+
+@router.post("/{room_id}/tokens/upload", response_model=RoomTokenResponse, status_code=201)
+async def create_token_with_upload(
+        room_id: UUID,
+        file: Optional[UploadFile] = File(None),
+        name_in_room: str = Form(...),
+        position_x: float = Form(0),
+        position_y: float = Form(0),
+        width: Optional[int] = Form(None),
+        height: Optional[int] = Form(None),
+        creature_name: Optional[str] = Form(None),
+        max_hp: Optional[int] = Form(None),
+        ac: Optional[int] = Form(None),
+        cr: Optional[int] = Form(1),
+        size: Optional[str] = Form("medium"),
+        type: Optional[str] = Form("humanoid"),
+        description: Optional[str] = Form(None),
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_user),
+        s3_client: S3Client = Depends(get_s3_client)
+):
+    """Создать токен с загрузкой изображения прямо из комнаты"""
+    from src.bestiary.models import CreatureTemplate, TokenType
+    from src.bestiary.enum import CreatureSize, CreatureType
+
+    service = RoomService(db)
+
+    if not await service.is_dm(room_id, current_user.id):
+        raise HTTPException(403, "Только DM может создавать токены")
+
+    image_id = None
+    if file:
+        image_id = await service._upload_image_file(
+            file=file,
+            user_id=current_user.id,
+            caption=name_in_room,
+            s3_client=s3_client
+        )
+
+    creature_template_id = None
+    if creature_name and file:
+        try:
+            creature_size = CreatureSize(size.lower()) if size else CreatureSize.MEDIUM
+            creature_type = CreatureType(type.lower()) if type else CreatureType.HUMANOID
+
+            template = CreatureTemplate(
+                name=creature_name,
+                description=description,
+                image_id=image_id,
+                max_hp=max_hp,
+                ac=ac,
+                cr=cr or 1,
+                size=creature_size,
+                type=creature_type,
+                data={}
+            )
+            db.add(template)
+            await db.flush()
+            creature_template_id = template.id
+        except Exception as e:
+            print(f"Warning: Could not create creature template: {e}")
+
+    token = RoomToken(
+        room_id=room_id,
+        image_id=image_id,
+        creature_template_id=creature_template_id,
+        name_in_room=name_in_room,
+        position_x=position_x,
+        position_y=position_y,
+        width=width,
+        height=height,
+        current_hp=max_hp,
+        current_ac=ac,
+        token_type=TokenType.CREATURE if creature_template_id else TokenType.PROP
+    )
+    db.add(token)
+    await db.flush()
+
+    token_response = RoomTokenResponse.model_validate(token)
+    if creature_template_id:
+        template = await db.get(CreatureTemplate, creature_template_id)
+        if template:
+            token_response.template = template
+
+    return token_response
+
 
 @router.get("/{room_id}/tokens", response_model=List[RoomTokenBasicInfo])
 async def get_room_tokens(

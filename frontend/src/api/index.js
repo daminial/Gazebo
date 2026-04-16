@@ -185,11 +185,21 @@ export const mapTemplatesAPI = {
 }
 
 export const bestiaryAPI = {
-  getAll: () => api.get('/bestiary/'),
-  getById: (id) => api.get(`/bestiary/${id}`),
-  create: (data) => api.post('/bestiary/', data),
-  update: (id, data) => api.put(`/bestiary/${id}`, data),
-  delete: (id) => api.delete(`/bestiary/${id}`),
+  getAll: () => api.get('/bestiary'),
+  getMy: () => api.get('/bestiary/my'),
+  getById: (id) => api.get(`/bestiary/templates/${id}`),
+  create: (formData) => {
+    const data = new FormData()
+    data.append('file', formData.get('file'))
+    data.append('model_data', formData.get('model_data'))
+    return api.post('/bestiary/templates', data, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+  },
+  update: (id, data) => api.put(`/bestiary/templates/${id}`, data),
+  delete: (id) => api.delete(`/bestiary/templates/${id}`),
 }
 
 export const mapAPI = {

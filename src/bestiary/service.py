@@ -93,6 +93,17 @@ class CreatureTemplateService:
         if not isinstance(template, CreatureTemplate) :
             raise TemplateNotFoundError(f"Template {template_id} not found")
         return template
+    
+    async def get_all_public_templates(self) -> List[CreatureTemplate]:
+        """Получить всех публичных существ"""
+        result = await self.db.execute(
+            select(CreatureTemplate)
+            .join(CreatureTemplate.image)
+            .filter(Image.is_public == True)
+            .order_by(Image.created_at.desc())
+            .options(selectinload(CreatureTemplate.image))
+        )
+        return list(result.scalars().all())
 
     async def get_user_templates(self, user_id: UUID) -> List[CreatureTemplate]:
         """Получить все шаблоны пользователя"""
