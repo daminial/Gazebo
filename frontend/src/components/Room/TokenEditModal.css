@@ -1,0 +1,156 @@
+/* Token Edit Modal */
+.token-edit-modal {
+  max-width: 450px;
+}
+
+.token-edit-body {
+  padding: 20px;
+}
+
+/* Token preview */
+.token-preview {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.token-preview-shape {
+  width: 100px;
+  height: 100px;
+  border: 3px solid #A8C46E;
+  background: linear-gradient(135deg, #5a6b3a 0%, #A8C46E 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.token-preview-shape.circle {
+  border-radius: 50%;
+}
+
+.token-preview-shape.square {
+  border-radius: 8px;
+}
+
+.token-preview-shape img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.token-preview-shape .token-letter {
+  font-size: 40px;
+  font-weight: bold;
+  color: #2d2525;
+}
+
+/* Edit form */
+.token-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.hp-control {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.hp-control button {
+  width: 40px;
+  height: 36px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+  color: #FDF8E8;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  transition: all 0.2s;
+}
+
+.hp-control button:hover {
+  background: rgba(168, 196, 110, 0.3);
+  border-color: #A8C46E;
+}
+
+.hp-control input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+  color: #FDF8E8;
+  border-radius: 6px;
+  font-size: 16px;
+  text-align: center;
+}
+
+.hp-bar-preview {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.hp-bar-preview > span {
+  font-size: 12px;
+  color: rgba(253, 248, 232, 0.7);
+}
+
+.hp-bar {
+  height: 8px;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.hp-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #FF6B6B 0%, #4ADE80 100%);
+  transition: width 0.3s ease;
+}
+
+/* Checkbox */
+.form-group label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.form-group input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+/* Action buttons */
+.token-edit-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.action-spacer {
+  flex: 1;
+}
+
+.btn-delete {
+  padding: 10px 16px;
+  border: 1px solid rgba(255, 107, 107, 0.3);
+  background: rgba(255, 107, 107, 0.1);
+  color: #FF6B6B;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.btn-delete:hover {
+  background: rgba(255, 107, 107, 0.2);
+  border-color: #FF6B6B;
+}

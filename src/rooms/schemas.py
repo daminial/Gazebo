@@ -185,11 +185,15 @@ class RoomTokenBasicInfo(BaseModel):
     name_in_room: str
     position_x: float
     position_y: float
+    width: Optional[int] = None
+    height: Optional[int] = None
+    rotation: Optional[float] = 0
     is_visible: bool
+    token_type: Optional[str] = None
+    page_id: Optional[int] = None
 
-    image_id: Optional[int] = None
-    template_name: Optional[str] = None
-    template_cr: Optional[int] = None
+    image_url: Optional[str] = None
+    creature_template: Optional[dict] = None
 
     model_config = ConfigDict(from_attributes=True)
 

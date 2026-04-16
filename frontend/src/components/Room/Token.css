@@ -1,0 +1,109 @@
+/* Token container */
+.token {
+  position: absolute;
+  cursor: grab;
+  user-select: none;
+  transition: box-shadow 0.2s;
+}
+
+.token:hover {
+  box-shadow: 0 0 0 3px rgba(168, 196, 110, 0.6);
+}
+
+.token.dragging {
+  cursor: grabbing;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+/* Circle token (creatures) */
+.token-circle {
+  border-radius: 50%;
+  border: 2px solid #A8C46E;
+  background: #2d2525;
+  overflow: hidden;
+}
+
+/* Square token (props) */
+.token-square {
+  border-radius: 4px;
+  border: 2px solid #8B7355;
+  background: #2d2525;
+  overflow: hidden;
+}
+
+/* Token image */
+.token-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Token placeholder with letter */
+.token-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #5a6b3a 0%, #A8C46E 100%);
+}
+
+.token-letter {
+  font-size: 24px;
+  font-weight: bold;
+  color: #2d2525;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.3);
+}
+
+/* HP bar */
+.token-hp-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 0 0 2px 2px;
+  overflow: hidden;
+}
+
+.token-hp-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #FF6B6B 0%, #4ADE80 100%);
+  transition: width 0.3s ease;
+}
+
+/* Token name label */
+.token-name-label {
+  position: absolute;
+  bottom: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 11px;
+  color: #FDF8E8;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 2px 6px;
+  border-radius: 3px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.token:hover .token-name-label {
+  opacity: 1;
+}
+
+/* Context menu */
+.token-context-menu {
+  position: fixed;
+  z-index: 99999;
+  background: #1a1a2e;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  padding: 6px 0;
+  min-width: 180px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  animation: menuFadeIn 0.15s ease-out;
+}

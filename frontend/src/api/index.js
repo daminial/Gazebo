@@ -113,8 +113,13 @@ export const roomsAPI = {
   
   // Токены
   getTokens: (id) => api.get(`/rooms/${id}/tokens`),
-  updateTokenPosition: (id, token_id, data) => api.patch(`/rooms/${id}/tokens/${token_id}/position`, data),
+  createToken: (id, data) => api.post(`/rooms/${id}/tokens`, data),
   createPropToken: (id, data) => api.post(`/rooms/${id}/tokens/prop`, data),
+  updateTokenPosition: (roomId, tokenId, data) => api.patch(`/rooms/${roomId}/tokens/${tokenId}/position`, data),
+  updateTokenHp: (roomId, tokenId, data) => api.patch(`/rooms/${roomId}/tokens/${tokenId}/hp`, data),
+  updateTokenConditions: (roomId, tokenId, data) => api.patch(`/rooms/${roomId}/tokens/${tokenId}/conditions`, data),
+  updateTokenVisibility: (roomId, tokenId, data) => api.patch(`/rooms/${roomId}/tokens/${tokenId}/visibility`, data),
+  deleteToken: (roomId, tokenId) => api.delete(`/rooms/${roomId}/tokens/${tokenId}`),
   
   // Настройки комнаты
   getSettings: (id) => api.get(`/rooms/${id}/settings`),

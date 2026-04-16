@@ -4,6 +4,7 @@ import { RoomProvider, useRoom } from '../context/RoomContext'
 import { VideoGrid } from '../components/Room/VideoGrid'
 import { ChatPanel } from '../components/Room/ChatPanel'
 import { ImagesPanel } from '../components/Room/ImagesPanel'
+import { TokensPanel } from '../components/Room/TokensPanel'
 import { MapCanvas } from '../components/Room/MapCanvas'
 import { PagesDropdown } from '../components/Room/PagesDropdown'
 import { RoomSettingsPanel } from '../components/Room/RoomSettingsPanel'
@@ -144,6 +145,12 @@ function GameBoardContent() {
             🖼️
           </button>
           <button
+            className={`tab-btn ${activeTab === 'tokens' ? 'active' : ''}`}
+            onClick={() => setActiveTab('tokens')}
+          >
+            🎭
+          </button>
+          <button
             className={`tab-btn ${activeTab === 'music' ? 'active' : ''}`}
             onClick={() => setActiveTab('music')}
           >
@@ -168,6 +175,8 @@ function GameBoardContent() {
           {activeTab === 'chat' && <ChatPanel />}
 
           {activeTab === 'images' && <ImagesPanel />}
+
+          {activeTab === 'tokens' && <TokensPanel />}
 
           {activeTab === 'music' && (
             <div className="tab-placeholder">

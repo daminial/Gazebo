@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useRoom } from '../../context/RoomContext'
+import { Token } from './Token'
 import './MapCanvas.css'
 
 const MIN_ZOOM = 0.1
@@ -10,7 +11,7 @@ export function MapCanvas({ activeTool = 'select', canvasWidth, canvasHeight, gr
   const {
     maps, activeMapId, pages, activePageId,
     setPageBackground, removePageBackground,
-    tokens, setTokens, sendTokenMove, roomId, createPropToken,
+    tokens, setTokens, sendTokenMove, roomId, createToken,
   } = useRoom()
   const [showContextMenu, setShowContextMenu] = useState(null)
   const [showBgPicker, setShowBgPicker] = useState(false)
@@ -154,6 +155,43 @@ export function MapCanvas({ activeTool = 'select', canvasWidth, canvasHeight, gr
     ? (isPanning ? 'grabbing' : 'grab')
     : 'default'
 
+  // Обработка drop из библиотеки
+  const handleDrop = useCallback(async (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+
+    try {
+      const data = JSON.parse(e.dataTransfer.getData('text/plain'))
+      
+      if (data.type === 'creature') {
+        // Вычисляем позицию относительно карты
+        const rect = canvasRef.current.getBoundingClientRect()
+        const x = (e.clientX - rect.left - panX) / zoom
+        const y = (e.clientY - rect.top - panY) / zoom
+        
+        // Привязка к сетке
+        const snappedX = Math.round(x / gridSize) * gridSize
+        const snappedY = Math.round(y / gridSize) * gridSize
+
+        // Создаём токен
+        await createToken({
+          name_in_room: data.name,
+          creature_template_id: data.creatureId,
+          position_x: snappedX,
+          position_y: snappedY,
+          page_id: activePageId,
+        })
+      }
+    } catch (err) {
+      console.error('Failed to handle drop:', err)
+    }
+  }, [panX, panY, zoom, gridSize, activePageId, createToken])
+
+  const handleDragOver = useCallback((e) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'copy'
+  }, [])
+
   if (!activePage) {
     return (
       <div className="map-viewport" style={{ cursor: viewportCursor }}>
@@ -178,6 +216,8 @@ export function MapCanvas({ activeTool = 'select', canvasWidth, canvasHeight, gr
         onContextMenu={handleContextMenu}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
+        onDrop={handleDrop}
+        onDragOver={handleDragOver}
       >
         {/* Трансформируемый слой (пустой, но с правильными размерами) */}
         <div
@@ -202,6 +242,19 @@ export function MapCanvas({ activeTool = 'select', canvasWidth, canvasHeight, gr
               }}
             />
           )}
+
+          {/* Токены */}
+          {tokens
+            .filter(t => t.page_id === activePageId)
+            .map(token => (
+              <Token
+                key={token.id}
+                token={token}
+                gridSize={gridSize}
+                zoom={zoom}
+              />
+            ))
+          }
         </div>
 
         {/* Zoom Controls */}
@@ -262,6 +315,8 @@ export function MapCanvas({ activeTool = 'select', canvasWidth, canvasHeight, gr
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onContextMenu={handleContextMenu}
+      onDrop={handleDrop}
+      onDragOver={handleDragOver}
     >
       {/* Трансформируемый слой: карта + сетка */}
       <div
@@ -293,6 +348,19 @@ export function MapCanvas({ activeTool = 'select', canvasWidth, canvasHeight, gr
             }}
           />
         )}
+
+        {/* Токены */}
+        {tokens
+          .filter(t => t.page_id === activePageId)
+          .map(token => (
+            <Token
+              key={token.id}
+              token={token}
+              gridSize={gridSize}
+              zoom={zoom}
+            />
+          ))
+        }
       </div>
 
       {/* Zoom Controls */}

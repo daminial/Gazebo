@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { roomsAPI } from '../api';
+import { roomsAPI, bestiaryAPI } from '../api';
 import { useLiveKit } from '../hooks/useLiveKit';
 import { useAuth } from './AuthContext';
 
@@ -146,6 +146,18 @@ export function RoomProvider({ roomId, children }) {
                   : t
               )
             );
+          }
+          if (data.type === 'token:created') {
+            setTokens((prev) => {
+              // Проверяем, нет ли уже такого токена
+              if (prev.find(t => t.id === data.payload.id)) {
+                return prev;
+              }
+              return [...prev, data.payload];
+            });
+          }
+          if (data.type === 'token:deleted') {
+            setTokens((prev) => prev.filter(t => t.id !== data.payload.token_id));
           }
           break;
 
@@ -524,6 +536,102 @@ export function RoomProvider({ roomId, children }) {
     }
   }, [roomId]);
 
+  // Методы для работы с токенами
+  const createToken = useCallback(async (tokenData) => {
+    try {
+      const response = await roomsAPI.createToken(roomId, tokenData);
+      const newToken = response.data;
+      setTokens(prev => [...prev, newToken]);
+
+      // Синхронизируем через LiveKit
+      sendData(
+        {
+          type: 'token:created',
+          payload: newToken,
+        },
+        'game:token'
+      );
+
+      return newToken;
+    } catch (err) {
+      console.error('Failed to create token:', err);
+      throw err;
+    }
+  }, [roomId, sendData]);
+
+  const updateToken = useCallback(async (tokenId, tokenData) => {
+    try {
+      // TODO: Добавить API эндпоинт для полного обновления токена
+      // Пока используем частичные обновления
+      setTokens(prev => prev.map(t => 
+        t.id === tokenId ? { ...t, ...tokenData } : t
+      ));
+    } catch (err) {
+      console.error('Failed to update token:', err);
+      throw err;
+    }
+  }, []);
+
+  const deleteToken = useCallback(async (tokenId) => {
+    try {
+      await roomsAPI.deleteToken(roomId, tokenId);
+      setTokens(prev => prev.filter(t => t.id !== tokenId));
+
+      // Синхронизируем через LiveKit
+      sendData(
+        {
+          type: 'token:deleted',
+          payload: { token_id: tokenId },
+        },
+        'game:token'
+      );
+    } catch (err) {
+      console.error('Failed to delete token:', err);
+      throw err;
+    }
+  }, [roomId, sendData]);
+
+  const updateTokenHp = useCallback(async (tokenId, hpDelta) => {
+    try {
+      const response = await roomsAPI.updateTokenHp(roomId, tokenId, { hp_delta: hpDelta });
+      setTokens(prev => prev.map(t => 
+        t.id === tokenId ? { ...t, current_hp: response.data.new_hp } : t
+      ));
+      return response.data.new_hp;
+    } catch (err) {
+      console.error('Failed to update token HP:', err);
+      throw err;
+    }
+  }, [roomId]);
+
+  const updateTokenVisibility = useCallback(async (tokenId, isVisible) => {
+    try {
+      await roomsAPI.updateTokenVisibility(roomId, tokenId, { is_visible: isVisible });
+      setTokens(prev => prev.map(t => 
+        t.id === tokenId ? { ...t, is_visible: isVisible } : t
+      ));
+    } catch (err) {
+      console.error('Failed to update token visibility:', err);
+      throw err;
+    }
+  }, [roomId]);
+
+  // Загрузка бестиария
+  const [bestiary, setBestiary] = useState([]);
+
+  useEffect(() => {
+    async function loadBestiary() {
+      try {
+        const response = await bestiaryAPI.getAll();
+        setBestiary(response.data);
+      } catch (err) {
+        console.error('Failed to load bestiary:', err);
+      }
+    }
+
+    loadBestiary();
+  }, []);
+
   const value = {
     // LiveKit
     livekitUrl,
@@ -560,6 +668,9 @@ export function RoomProvider({ roomId, children }) {
     loading,
     error,
 
+    // Бестиарий
+    bestiary,
+
     // Методы
     setMaps,
     setTokens,
@@ -568,6 +679,11 @@ export function RoomProvider({ roomId, children }) {
     sendDiceRoll,
     syncMapAdded,
     syncMapDeleted,
+    createToken,
+    updateToken,
+    deleteToken,
+    updateTokenHp,
+    updateTokenVisibility,
   };
 
   return <RoomContext.Provider value={value}>{children}</RoomContext.Provider>;
