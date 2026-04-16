@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import { FaEye, FaEyeSlash } from 'react-icons/fa'
-import './Auth.css'
+import styles from './Auth.module.css'
 
 export default function Register() {
   const [formData, setFormData] = useState({
@@ -53,18 +53,18 @@ export default function Register() {
   }
 
   return (
-    <div className="auth-page">
-      <header className="auth-header">
-        <div className="logo">
+    <div className={`${styles['auth-page']} ${styles['register-page']}`}>
+      <header className={styles['auth-header']}>
+        <div className={styles['logo']}>
           <span>Meetgazebo</span>
         </div>
       </header>
 
-      <div className="auth-container">
-        <div className="auth-card register">
+      <div className={styles['auth-container']}>
+        <div className={`${styles['auth-card']} ${styles['register']}`}>
           <h1>Регистрация</h1>
           <form onSubmit={handleSubmit}>
-            <div className="form-group">
+            <div className={styles['form-group']}>
               <input
                 type="email"
                 name="email"
@@ -74,20 +74,20 @@ export default function Register() {
                 placeholder="Email"
               />
             </div>
-            <div className="form-group">
+            <div className={styles['form-group']}>
               <input
-                type="username"
+                type="text"
                 name="username"
                 value={formData.username}
                 onChange={handleChange}
                 required
-                placeholder="Имя"
+                placeholder="Имя пользователя"
               />
             </div>
-            <div className="form-group">
-              <div className="password-input-wrapper">
+            <div className={styles['form-group']}>
+              <div className={styles['password-input-wrapper']}>
                 <input
-                  type={showPassword ? '' : 'password'}
+                  type={showPassword ? 'text' : 'password'}
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
@@ -96,17 +96,17 @@ export default function Register() {
                 />
                 <button
                   type="button"
-                  className="password-toggle"
+                  className={styles['password-toggle']}
                   onMouseDown={() => setShowPassword(!showPassword)}
                 >
                   {showPassword ? <FaEyeSlash /> : <FaEye />}
                 </button>
               </div>
             </div>
-            <div className="form-group">
-              <div className="password-input-wrapper">
+            <div className={styles['form-group']}>
+              <div className={styles['password-input-wrapper']}>
                 <input
-                  type={showConfirmPassword ? '' : 'password'}
+                  type={showConfirmPassword ? 'text' : 'password'}
                   name="confirmPassword"
                   value={formData.confirmPassword}
                   onChange={handleChange}
@@ -115,7 +115,7 @@ export default function Register() {
                 />
                 <button
                   type="button"
-                  className="password-toggle"
+                  className={styles['password-toggle']}
                   onMouseDown={() => setShowConfirmPassword(!showConfirmPassword)}
                 >
                   {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
@@ -123,12 +123,12 @@ export default function Register() {
               </div>
             </div>
 
-            {error && <p className="error-message">{error}</p>}
+            {error && <p className={styles['error-message']}>{error}</p>}
 
-            <button type="submit" className="btn btn-submit" disabled={loading}>
+            <button type="submit" className={`${styles['btn']} ${styles['btn-submit']}`} disabled={loading}>
               {loading ? 'Регистрация...' : 'Зарегистрироваться'}
             </button>
-            <Link to="/login" className="btn btn-back">
+            <Link to="/login" className={`${styles['btn']} ${styles['btn-back']}`}>
               Вернуться ко входу
             </Link>
           </form>

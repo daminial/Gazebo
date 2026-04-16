@@ -65,7 +65,6 @@ class RoomToken(Base):
     creature_template_id = Column(Integer,
                                   ForeignKey("creature_templates.id", ondelete="SET NULL"),
                                   nullable=True)
-
     name_in_room = Column(String, nullable=False)
 
     position_x = Column(Float, nullable=False, default=0)

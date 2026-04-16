@@ -88,6 +88,7 @@ class RoomTokenBase(BaseModel):
 
 
 class RoomTokenCreate(RoomTokenBase):
+    page_id: Optional[int] = Field(None, gt=0)
     creature_template_id: Optional[int] = Field(None, gt=0)
     controlled_by: Optional[UUID] = None
 
@@ -119,6 +120,7 @@ class RoomTokenUpdate(BaseModel):
 class RoomTokenResponse(RoomTokenBase):
     id: int
     room_id: UUID
+    page_id: Optional[int]
     creature_template_id: Optional[int]
     controlled_by: Optional[UUID]
     created_at: datetime

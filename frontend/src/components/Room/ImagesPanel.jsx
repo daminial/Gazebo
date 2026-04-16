@@ -147,14 +147,14 @@ export function ImagesPanel() {
             onClick={() => setShowUploadModal(true)}
             title="Загрузить новую карту"
           >
-            📷 Загрузить
+            Загрузить
           </button>
           <button
             className="btn-add-image"
             onClick={() => setShowTemplatesModal(true)}
             title="Выбрать из библиотеки"
           >
-            🗺️ Из библиотеки
+            Из библиотеки
           </button>
         </div>
       </div>

@@ -17,7 +17,7 @@ from src.rooms.exceptions import RoomPermissionError, RoomAccessError
 from src.rooms.models import Room, RoomUsers, RoomRole, RoomSettings, RoomPage, ChatMessage
 from src.auth.models import User
 from src.map.models import RoomMap, MapTemplate
-from src.bestiary.models import RoomToken, CreatureTemplate, TokenType
+from src.bestiary.models import RoomToken, CreatureTemplate
 from src.rooms.schemas import RoomUserListItem, RoomSettingsCreate, RoomSettingsUpdate, RoomPageCreate, RoomPageUpdate, ChatMessageCreate, ChatMessageResponse, ChatMessageListResponse
 from sqlalchemy import select, func, text
 
@@ -43,7 +43,8 @@ class RoomService:
             mime_type=file.content_type,
             file_size=len(file_data),
             type=MediaType.IMAGE,
-            is_public=True,
+            # Комнатные загрузки должны оставаться приватными и не попадать в глобальные публичные списки.
+            is_public=False,
             caption=caption,
             uploaded_by=user_id,
         )
@@ -332,7 +333,7 @@ class RoomService:
     async def add_token_to_room(self, room_id: UUID, token_data: RoomTokenCreate, user: User) -> RoomToken:
         """Добавить токен в комнату"""
         room = await self.get_room(room_id)
-        if not self.is_dm(room_id, user.id):
+        if not await self.is_dm(room_id, user.id):
             raise RoomPermissionError("только DM может загружать токены")
 
         token_dict = token_data.model_dump()
@@ -347,6 +348,8 @@ class RoomService:
             **token_dict
         )
         self.db.add(token)
+        # Ensure DB defaults (id, timestamps) are populated before returning
+        await self.db.flush()
         return token
 
     async def create_prop_token(
@@ -361,19 +364,33 @@ class RoomService:
             user: User = None
     ) -> RoomToken:
         """Создать prop-токен (просто изображение без статов)"""
+        from src.bestiary.enum import CreatureSize, CreatureType
+
         room = await self.get_room(room_id)
         if not await self.is_dm(room_id, user.id):
             raise RoomPermissionError("Только DM может добавлять объекты на поле")
 
+        template = CreatureTemplate(
+            name=name,
+            image_id=image_id,
+            max_hp=None,
+            ac=None,
+            cr=0,
+            size=CreatureSize.MEDIUM,
+            type=CreatureType.HUMANOIDS,
+            data={"token_type": "prop"}
+        )
+        self.db.add(template)
+        await self.db.flush()
+
         token = RoomToken(
             room_id=room_id,
-            image_id=image_id,
+            creature_template_id=template.id,
             name_in_room=name,
             position_x=position_x,
             position_y=position_y,
             width=width,
-            height=height,
-            token_type=TokenType.PROP
+            height=height
         )
         self.db.add(token)
         await self.db.flush()
@@ -394,13 +411,52 @@ class RoomService:
             controlled_by: Optional[UUID] = None
     ) -> List[RoomToken]:
         """Получить список токенов комнаты"""
-        query = select(RoomToken).filter_by(room_id=room_id)
+        query = (
+            select(RoomToken)
+            .filter_by(room_id=room_id)
+            .options(
+                selectinload(RoomToken.creature_template).selectinload(CreatureTemplate.image)
+            )
+        )
 
         if controlled_by is not None:
             query = query.filter_by(controlled_by=controlled_by)
 
         result = await self.db.execute(query)
         return list(result.scalars().all())
+
+    async def update_token(self, token_id: int, data: dict, user: User) -> RoomToken:
+        """Обновить токен"""
+        result = await self.db.execute(
+            select(RoomToken)
+            .where(RoomToken.id == token_id)
+            .options(
+                selectinload(RoomToken.creature_template).selectinload(CreatureTemplate.image)
+            )
+        )
+        token = result.scalar_one_or_none()
+        if not isinstance(token, RoomToken):
+            raise HTTPException(404, "Токен не найден")
+
+        if not await self.is_dm(token.room_id, user.id):
+            raise RoomPermissionError("Только DM может изменять токены")
+
+        # Only allow updating a restricted set of scalar fields to avoid
+        # accidentally overwriting relationship attributes (like creature_template)
+        allowed_fields = {
+            'name_in_room', 'current_hp', 'current_ac', 'creature_template_id',
+            'is_visible', 'width', 'height', 'rotation', 'position_x', 'position_y',
+            'conditions', 'controlled_by'
+        }
+
+        for key, value in data.items():
+            if key not in allowed_fields:
+                # ignore unknown or dangerous fields (e.g. 'creature_template')
+                continue
+            setattr(token, key, value)
+
+        await self.db.flush()
+        return token
 
     async def update_token_position(self, token_id: int, x: float, y: float,
                                    rotation: Optional[float] = None, user: User = None):
@@ -686,12 +742,9 @@ class RoomService:
             offset: int = 0
     ) -> ChatMessageListResponse:
         """Получить историю сообщений чата для комнаты"""
-        # Подсчет общего количества
         count_query = select(func.count(ChatMessage.id)).filter_by(room_id=room_id)
         count_result = await self.db.execute(count_query)
         total = count_result.scalar()
-
-        # Получение сообщений
         query = (
             select(ChatMessage, User.username)
             .outerjoin(User, ChatMessage.user_id == User.id)
@@ -716,7 +769,6 @@ class RoomService:
             for msg, username in rows
         ]
 
-        # Разворачиваем чтобы сообщения шли по возрастанию времени
         messages.reverse()
 
         return ChatMessageListResponse(

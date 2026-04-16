@@ -21,6 +21,7 @@ export function RoomProvider({ roomId, children }) {
   const [pages, setPages] = useState([]);
   const [activePageId, setActivePageId] = useState(null);
   const [roomSettings, setRoomSettings] = useState(null);
+  const [isDm, setIsDm] = useState(false);
 
   // Загрузка токена LiveKit
   useEffect(() => {
@@ -91,6 +92,30 @@ export function RoomProvider({ roomId, children }) {
 
     loadRoomData();
   }, [roomId]);
+
+  // Определяем роль текущего пользователя в комнате
+  useEffect(() => {
+    async function loadUserRole() {
+      try {
+        const usersRes = await roomsAPI.getUsers(roomId);
+        const users = usersRes.data || [];
+        console.debug('[RoomContext] room users:', users)
+        const me = users.find(u => String(u.user_id) === String(user?.id));
+        console.debug('[RoomContext] current user:', user?.id, 'matched user entry:', me)
+        if (me) {
+          const role = (me.room_role || '').toString().toUpperCase()
+          const isDmFlag = role === 'DM' || role === 'OWNER'
+          setIsDm(isDmFlag)
+          console.debug('[RoomContext] isDm set to', isDmFlag, 'from role', role)
+        } else {
+          setIsDm(false)
+        }
+      } catch (err) {
+        console.warn('Failed to load room users to determine DM role:', err);
+      }
+    }
+    if (user) loadUserRole();
+  }, [roomId, user]);
 
   // Загрузка истории чата при подключении
   const [chatMessages, setChatMessages] = useState([]);
@@ -272,16 +297,31 @@ export function RoomProvider({ roomId, children }) {
 
   // Методы для отправки игровых событий
   const sendTokenMove = useCallback(
-    (token_id, x, y, rotation = null) => {
-      sendData(
-        {
-          type: 'token:move',
-          payload: { token_id, x, y, rotation },
-        },
-        'game:token'
-      );
+    async (token_id, x, y, rotation = null) => {
+      // Сначала сохраняем позицию на бэке
+        try {
+          await roomsAPI.updateTokenPosition(roomId, token_id, { position_x: x, position_y: y, rotation });
+
+          // Обновляем локальный state сразу
+          setTokens(prev => prev.map(t => t.id === token_id ? { ...t, position_x: x, position_y: y, rotation: rotation ?? t.rotation } : t));
+        } catch (err) {
+          console.error('Failed to persist token position:', err);
+        }
+
+      // Синхронизируем движение с другими участниками через LiveKit
+      try {
+        sendData(
+          {
+            type: 'token:move',
+            payload: { token_id, x, y, rotation },
+          },
+          'game:token'
+        );
+      } catch (err) {
+        console.error('Failed to send token move via LiveKit:', err);
+      }
     },
-    [sendData]
+    [sendData, roomId]
   );
 
   const sendChatMessage = useCallback(
@@ -559,18 +599,101 @@ export function RoomProvider({ roomId, children }) {
     }
   }, [roomId, sendData]);
 
+  // Создание токена с загрузкой изображения
+  const createTokenWithUpload = useCallback(async (tokenData, file = null, creatureData = null) => {
+    try {
+      const formData = new FormData();
+      formData.append('name_in_room', tokenData.name_in_room);
+      formData.append('position_x', tokenData.position_x || 0);
+      formData.append('position_y', tokenData.position_y || 0);
+      
+      // Передаем page_id если есть
+      if (tokenData.page_id) {
+        formData.append('page_id', tokenData.page_id);
+      }
+      
+      if (file) {
+        formData.append('file', file);
+      }
+      
+      // Данные о существе (если создаем новое)
+      if (creatureData) {
+        if (creatureData.creature_name) {
+          formData.append('creature_name', creatureData.creature_name);
+        }
+        if (creatureData.max_hp !== undefined && creatureData.max_hp !== null) {
+          formData.append('max_hp', creatureData.max_hp);
+        }
+        if (creatureData.ac !== undefined && creatureData.ac !== null) {
+          formData.append('ac', creatureData.ac);
+        }
+        if (creatureData.cr !== undefined) {
+          formData.append('cr', creatureData.cr);
+        }
+        if (creatureData.size) {
+          formData.append('size', creatureData.size);
+        }
+        if (creatureData.type) {
+          formData.append('type', creatureData.type);
+        }
+        if (creatureData.description) {
+          formData.append('description', creatureData.description);
+        }
+      }
+      
+      const response = await roomsAPI.createTokenWithUpload(roomId, formData);
+      let newToken = response.data;
+      try {
+        const tokensRes = await roomsAPI.getTokens(roomId);
+        const freshToken = tokensRes.data.find(t => t.id === newToken.id);
+        if (freshToken) {
+          newToken = freshToken;
+        }
+      } catch (refreshErr) {
+        console.warn('Failed to refresh token data after upload:', refreshErr);
+      }
+
+      setTokens(prev => [...prev, newToken]);
+
+      // Синхронизируем через LiveKit
+      sendData(
+        {
+          type: 'token:created',
+          payload: newToken,
+        },
+        'game:token'
+      );
+
+      return newToken;
+    } catch (err) {
+      console.error('Failed to create token with upload:', err);
+      throw err;
+    }
+  }, [roomId, sendData]);
+
   const updateToken = useCallback(async (tokenId, tokenData) => {
     try {
-      // TODO: Добавить API эндпоинт для полного обновления токена
-      // Пока используем частичные обновления
-      setTokens(prev => prev.map(t => 
-        t.id === tokenId ? { ...t, ...tokenData } : t
+      const response = await roomsAPI.updateToken(roomId, tokenId, tokenData);
+      const updatedToken = response.data;
+      setTokens(prev => prev.map(t =>
+        t.id === tokenId ? { ...t, ...updatedToken } : t
       ));
+      
+      // Синхронизируем через LiveKit
+      sendData(
+        {
+          type: 'token:updated',
+          payload: { token_id: tokenId, updates: updatedToken },
+        },
+        'game:token'
+      );
+      
+      return updatedToken;
     } catch (err) {
       console.error('Failed to update token:', err);
       throw err;
     }
-  }, []);
+  }, [roomId, sendData]);
 
   const deleteToken = useCallback(async (tokenId) => {
     try {
@@ -680,10 +803,12 @@ export function RoomProvider({ roomId, children }) {
     syncMapAdded,
     syncMapDeleted,
     createToken,
+    createTokenWithUpload,
     updateToken,
     deleteToken,
     updateTokenHp,
     updateTokenVisibility,
+    isDm,
   };
 
   return <RoomContext.Provider value={value}>{children}</RoomContext.Provider>;

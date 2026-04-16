@@ -45,6 +45,12 @@
   opacity: 0.6;
 }
 
+/* Visual hint when dragging over the map viewport */
+.map-viewport.drag-over {
+  outline: 4px dashed rgba(168,196,110,0.9);
+  outline-offset: -4px;
+}
+
 /* Индикатор режима */
 .map-mode-indicator {
   position: absolute;

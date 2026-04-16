@@ -114,7 +114,13 @@ export const roomsAPI = {
   // Токены
   getTokens: (id) => api.get(`/rooms/${id}/tokens`),
   createToken: (id, data) => api.post(`/rooms/${id}/tokens`, data),
+  createTokenWithUpload: (id, formData) => api.post(`/rooms/${id}/tokens/upload`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  }),
   createPropToken: (id, data) => api.post(`/rooms/${id}/tokens/prop`, data),
+  updateToken: (roomId, tokenId, data) => api.put(`/rooms/${roomId}/tokens/${tokenId}`, data),
   updateTokenPosition: (roomId, tokenId, data) => api.patch(`/rooms/${roomId}/tokens/${tokenId}/position`, data),
   updateTokenHp: (roomId, tokenId, data) => api.patch(`/rooms/${roomId}/tokens/${tokenId}/hp`, data),
   updateTokenConditions: (roomId, tokenId, data) => api.patch(`/rooms/${roomId}/tokens/${tokenId}/conditions`, data),
@@ -185,11 +191,21 @@ export const mapTemplatesAPI = {
 }
 
 export const bestiaryAPI = {
-  getAll: () => api.get('/bestiary/'),
-  getById: (id) => api.get(`/bestiary/${id}`),
-  create: (data) => api.post('/bestiary/', data),
-  update: (id, data) => api.put(`/bestiary/${id}`, data),
-  delete: (id) => api.delete(`/bestiary/${id}`),
+  getAll: () => api.get('/bestiary'),
+  getMy: () => api.get('/bestiary/my'),
+  getById: (id) => api.get(`/bestiary/templates/${id}`),
+  create: (formData) => {
+    const data = new FormData()
+    data.append('file', formData.get('file'))
+    data.append('model_data', formData.get('model_data'))
+    return api.post('/bestiary/templates', data, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+  },
+  update: (id, data) => api.put(`/bestiary/templates/${id}`, data),
+  delete: (id) => api.delete(`/bestiary/templates/${id}`),
 }
 
 export const mapAPI = {

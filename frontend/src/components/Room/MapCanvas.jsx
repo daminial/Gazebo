@@ -12,6 +12,7 @@ export function MapCanvas({ activeTool = 'select', canvasWidth, canvasHeight, gr
     maps, activeMapId, pages, activePageId,
     setPageBackground, removePageBackground,
     tokens, setTokens, sendTokenMove, roomId, createToken,
+    isDm,
   } = useRoom()
   const [showContextMenu, setShowContextMenu] = useState(null)
   const [showBgPicker, setShowBgPicker] = useState(false)
@@ -23,6 +24,7 @@ export function MapCanvas({ activeTool = 'select', canvasWidth, canvasHeight, gr
   const [zoom, setZoom] = useState(1)
   const [isPanning, setIsPanning] = useState(false)
   const panStartRef = useRef({ x: 0, y: 0 })
+  const [isDragOver, setIsDragOver] = useState(false)
 
   const activePage = pages.find(p => p.id === activePageId)
   let activeMap = null
@@ -161,29 +163,80 @@ export function MapCanvas({ activeTool = 'select', canvasWidth, canvasHeight, gr
     e.stopPropagation()
 
     try {
-      const data = JSON.parse(e.dataTransfer.getData('text/plain'))
-      
-      if (data.type === 'creature') {
-        // Вычисляем позицию относительно карты
-        const rect = canvasRef.current.getBoundingClientRect()
-        const x = (e.clientX - rect.left - panX) / zoom
-        const y = (e.clientY - rect.top - panY) / zoom
-        
-        // Привязка к сетке
-        const snappedX = Math.round(x / gridSize) * gridSize
-        const snappedY = Math.round(y / gridSize) * gridSize
+      try {
+        console.debug('[MapCanvas] drop event types:', e.dataTransfer && Array.from(e.dataTransfer.types))
+      } catch (err) {
+        console.warn('[MapCanvas] failed to read dataTransfer types:', err)
+      }
 
-        // Создаём токен
-        await createToken({
-          name_in_room: data.name,
-          creature_template_id: data.creatureId,
-          position_x: snappedX,
-          position_y: snappedY,
-          page_id: activePageId,
-        })
+      if (!activePageId) {
+        alert('Сначала выберите активную страницу, затем размещайте токены на поле.')
+        return
+      }
+
+      // Only DM can create tokens on the server
+      if (!isDm) {
+        alert('Только DM может добавлять токены на карту.')
+        return
+      }
+
+      const raw = e.dataTransfer.getData('text/plain')
+      console.debug('[MapCanvas] drop raw data:', raw)
+      let data
+      try {
+        data = JSON.parse(raw)
+      } catch (err) {
+        console.error('[MapCanvas] failed to parse drop payload:', err, raw)
+        return
+      }
+      
+      // Вычисляем позицию относительно карты
+      const rect = canvasRef.current.getBoundingClientRect()
+      const x = (e.clientX - rect.left - panX) / zoom
+      const y = (e.clientY - rect.top - panY) / zoom
+      
+      // Привязка к сетке
+      const snappedX = Math.round(x / gridSize) * gridSize
+      const snappedY = Math.round(y / gridSize) * gridSize
+
+      if (data.type === 'creature') {
+
+        console.debug('[MapCanvas] creating token from creature payload', data)
+        try {
+          await createToken({
+            name_in_room: data.name,
+            creature_template_id: data.creatureId,
+            position_x: snappedX,
+            position_y: snappedY,
+            page_id: activePageId,
+          })
+        } catch (err) {
+          console.error('[MapCanvas] createToken (creature) failed:', err, err.response?.data || null)
+          throw err
+        }
+      }
+      if (data.type === 'room-token') {
+        console.debug('[MapCanvas] creating token from room-token payload', data)
+        try {
+          await createToken({
+            name_in_room: data.name,
+            creature_template_id: data.creatureTemplateId || undefined,
+            page_id: activePageId,
+            position_x: snappedX,
+            position_y: snappedY,
+            width: data.width || undefined,
+            height: data.height || undefined,
+            current_hp: data.currentHp,
+            current_ac: data.currentAc,
+          })
+        } catch (err) {
+          console.error('[MapCanvas] createToken (room-token) failed:', err, err.response?.data || null)
+          throw err
+        }
       }
     } catch (err) {
       console.error('Failed to handle drop:', err)
+      alert('Не удалось добавить токен на поле. Проверьте права DM и попробуйте еще раз.')
     }
   }, [panX, panY, zoom, gridSize, activePageId, createToken])
 
@@ -192,9 +245,28 @@ export function MapCanvas({ activeTool = 'select', canvasWidth, canvasHeight, gr
     e.dataTransfer.dropEffect = 'copy'
   }, [])
 
+  const handleDragEnter = useCallback((e) => {
+    e.preventDefault()
+    setIsDragOver(true)
+    console.debug('[MapCanvas] dragenter')
+  }, [])
+
+  const handleDragLeave = useCallback((e) => {
+    e.preventDefault()
+    setIsDragOver(false)
+    console.debug('[MapCanvas] dragleave')
+  }, [])
+
   if (!activePage) {
     return (
-      <div className="map-viewport" style={{ cursor: viewportCursor }}>
+      <div
+        className={"map-viewport" + (isDragOver ? ' drag-over' : '')}
+        style={{ cursor: viewportCursor }}
+        onDrop={handleDrop}
+        onDragOver={handleDragOver}
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+      >
         <div className="map-placeholder">
           <span>📄</span>
           <p>Нет активной страницы</p>
@@ -309,7 +381,7 @@ export function MapCanvas({ activeTool = 'select', canvasWidth, canvasHeight, gr
 
   return (
     <div
-      className="map-viewport"
+      className={"map-viewport" + (isDragOver ? ' drag-over' : '')}
       ref={canvasRef}
       style={{ cursor: viewportCursor }}
       onMouseDown={handleMouseDown}
@@ -317,6 +389,8 @@ export function MapCanvas({ activeTool = 'select', canvasWidth, canvasHeight, gr
       onContextMenu={handleContextMenu}
       onDrop={handleDrop}
       onDragOver={handleDragOver}
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
     >
       {/* Трансформируемый слой: карта + сетка */}
       <div

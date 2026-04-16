@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, Form, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 
+from src.bestiary.models import RoomToken
 from src.bestiary.schemas import RoomTokenResponse, RoomTokenCreate, RoomTokenPropCreate
 from src.core.config import settings
 from src.core.database import get_db
@@ -17,7 +18,7 @@ from src.rooms.enum import RoomRole
 from src.rooms.livekit import generate_livekit_token
 from src.rooms.service import RoomService
 from src.rooms.schemas import (RoomResponse, RoomUserListItem,
-                               RoomUserResponse, RoomUserUpdate, RoomTokenBasicInfo,
+                               RoomUserResponse, RoomUserUpdate, RoomTokenBasicInfo, RoomTokenInRoom,
                                TokenPositionUpdate, TokenHPUpdate, TokenConditionsUpdate, TokenVisibilityUpdate,
                                LiveKitTokenResponse, RoomSettingsResponse, RoomSettingsUpdate,
                                RoomPageResponse, RoomPageCreate, RoomPageUpdate, RoomPageListItem, RoomListItem,
@@ -323,21 +324,67 @@ async def remove_map_from_room(
 
 
 # Управление токенами
-@router.post("/{room_id}/tokens", response_model=RoomTokenResponse)
+@router.post("/{room_id}/tokens", response_model=RoomTokenBasicInfo)
 async def create_token(
         room_id: UUID,
         token_data: RoomTokenCreate,
         db: AsyncSession = Depends(get_db),
-        current_user: User = Depends(get_current_user)
+        current_user: User = Depends(get_current_user),
+        s3_client: S3Client = Depends(get_s3_client)
 ):
     """Создать токен в комнате"""
+    from src.bestiary.models import CreatureTemplate
+
     service = RoomService(db)
+    media_service = MediaService(s3_client, db)
 
     if not await service.is_in_room(room_id, current_user.id):
         raise HTTPException(403, "Вы не в этой комнате")
 
     token = await service.add_token_to_room(room_id, token_data, current_user)
-    return token
+
+    # Формируем ответ в том же формате, что и GET /tokens
+    token_info = RoomTokenBasicInfo(
+        id=token.id,
+        name_in_room=token.name_in_room,
+        position_x=token.position_x,
+        position_y=token.position_y,
+        width=token.width,
+        height=token.height,
+        rotation=token.rotation,
+        is_visible=token.is_visible,
+        page_id=token.page_id,
+        image_url=None,
+        creature_template=None,
+        token_type=None,
+    )
+
+    template_data = None
+    if token.creature_template_id:
+        template = await db.get(CreatureTemplate, token.creature_template_id)
+        template_data = template.data if (template and isinstance(template.data, dict)) else {}
+    token_info.token_type = template_data.get("token_type", "creature" if token.creature_template_id else "prop") if template_data is not None else ("creature" if token.creature_template_id else "prop")
+
+    if token.creature_template_id:
+        template = await db.get(CreatureTemplate, token.creature_template_id)
+        image_url = None
+        if template and getattr(template, 'image_id', None):
+            from src.core.storage.models import Image
+            image_obj = await db.get(Image, template.image_id)
+            if image_obj:
+                image_url = await media_service.get_image_url(image_obj)
+
+        token_info.image_url = image_url
+        token_info.creature_template = {
+            "id": template.id,
+            "name": template.name,
+            "max_hp": template.max_hp,
+            "ac": template.ac,
+            "cr": template.cr,
+            "image_url": image_url,
+        } if template else None
+
+    return token_info
 
 
 @router.post("/{room_id}/tokens/prop", response_model=RoomTokenResponse, status_code=201)
@@ -365,21 +412,279 @@ async def create_prop_token(
     )
     return token
 
-@router.get("/{room_id}/tokens", response_model=List[RoomTokenBasicInfo])
+
+@router.post("/{room_id}/tokens/upload", response_model=RoomTokenResponse, status_code=201)
+async def create_token_with_upload(
+        room_id: UUID,
+        file: Optional[UploadFile] = File(None),
+        name_in_room: str = Form(...),
+        position_x: float = Form(0),
+        position_y: float = Form(0),
+        width: Optional[int] = Form(None),
+        height: Optional[int] = Form(None),
+        page_id: Optional[int] = Form(None),
+        creature_name: Optional[str] = Form(None),
+        max_hp: Optional[int] = Form(None),
+        ac: Optional[int] = Form(None),
+        cr: Optional[int] = Form(1),
+        size: Optional[str] = Form("medium"),
+        type: Optional[str] = Form("humanoid"),
+        description: Optional[str] = Form(None),
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_user),
+        s3_client: S3Client = Depends(get_s3_client)
+):
+    """Создать токен с загрузкой изображения прямо из комнаты"""
+    from src.bestiary.models import CreatureTemplate
+    from src.bestiary.enum import CreatureSize, CreatureType
+
+    service = RoomService(db)
+
+    if not await service.is_dm(room_id, current_user.id):
+        raise HTTPException(403, "Только DM может создавать токены")
+
+    image_id = None
+    if file:
+        image_id = await service._upload_image_file(
+            file=file,
+            user_id=current_user.id,
+            caption=name_in_room,
+            s3_client=s3_client
+        )
+
+    creature_template_id = None
+    if file:
+        def parse_creature_type(value: Optional[str]) -> CreatureType:
+            if not value:
+                return CreatureType.HUMANOIDS
+            normalized = value.strip().lower()
+            aliases = {
+                "aberration": CreatureType.ABERRATIONS,
+                "aberrations": CreatureType.ABERRATIONS,
+                "beast": CreatureType.BEASTS,
+                "beasts": CreatureType.BEASTS,
+                "celestial": CreatureType.CELESTIALS,
+                "celestials": CreatureType.CELESTIALS,
+                "construct": CreatureType.CONSTRUCTS,
+                "constructs": CreatureType.CONSTRUCTS,
+                "dragon": CreatureType.DRAGONS,
+                "dragons": CreatureType.DRAGONS,
+                "elemental": CreatureType.ELEMENTALS,
+                "elementals": CreatureType.ELEMENTALS,
+                "fey": CreatureType.FEY,
+                "fiend": CreatureType.FIENDS,
+                "fiends": CreatureType.FIENDS,
+                "giant": CreatureType.GIANTS,
+                "giants": CreatureType.GIANTS,
+                "humanoid": CreatureType.HUMANOIDS,
+                "humanoids": CreatureType.HUMANOIDS,
+                "monstrosity": CreatureType.MONSTROSITIES,
+                "monstrosities": CreatureType.MONSTROSITIES,
+                "ooze": CreatureType.OOZES,
+                "oozes": CreatureType.OOZES,
+                "plant": CreatureType.PLANTS,
+                "plants": CreatureType.PLANTS,
+                "растение": CreatureType.PLANTS,
+                "растения": CreatureType.PLANTS,
+                "undead": CreatureType.UNDEAD,
+            }
+            return aliases.get(normalized, CreatureType.HUMANOIDS)
+
+        creature_size = CreatureSize(size.lower()) if size else CreatureSize.MEDIUM
+        creature_type = parse_creature_type(type)
+
+        template = CreatureTemplate(
+            name=creature_name or name_in_room,
+            description=description,
+            image_id=image_id,
+            max_hp=max_hp,
+            ac=ac,
+            cr=cr or 1,
+            size=creature_size,
+            type=creature_type,
+            data={
+                "token_type": "creature" if (creature_name or max_hp is not None or ac is not None) else "prop",
+            }
+        )
+        db.add(template)
+        await db.flush()
+        creature_template_id = template.id
+
+    token = RoomToken(
+        room_id=room_id,
+        page_id=page_id,
+        creature_template_id=creature_template_id,
+        name_in_room=name_in_room,
+        position_x=position_x,
+        position_y=position_y,
+        width=width,
+        height=height,
+        current_hp=max_hp,
+        current_ac=ac
+    )
+    db.add(token)
+    await db.flush()
+
+    token_response = RoomTokenResponse.model_validate(token)
+    if creature_template_id:
+        template = await db.get(CreatureTemplate, creature_template_id)
+        if template:
+            token_response.template = template
+
+    return token_response
+
+
+@router.get("/{room_id}/tokens", response_model=List[RoomTokenInRoom])
 async def get_room_tokens(
         room_id: UUID,
         controlled_by: Optional[UUID] = None,
         db: AsyncSession = Depends(get_db),
-        current_user: User = Depends(get_current_user)
+        current_user: User = Depends(get_current_user),
+        s3_client: S3Client = Depends(get_s3_client)
 ):
     """Получить все токены в комнате"""
+    from src.bestiary.models import CreatureTemplate
+    from src.core.storage.models import Image
+    
     service = RoomService(db)
 
     if not await service.is_in_room(room_id, current_user.id):
         raise HTTPException(403, "Вы не в этой комнате")
 
     tokens = await service.get_list_tokens(room_id, controlled_by)
-    return tokens
+    media_service = MediaService(s3_client, db)
+
+    result = []
+    for token in tokens:
+        print(f"DEBUG: Processing token {token.id}: creature_template_id={token.creature_template_id}, creature_template={token.creature_template}")
+        
+        token_info = RoomTokenInRoom(
+            id=token.id,
+            name_in_room=token.name_in_room,
+            position_x=token.position_x,
+            position_y=token.position_y,
+            width=token.width,
+            height=token.height,
+            rotation=token.rotation,
+            is_visible=token.is_visible,
+            page_id=token.page_id,
+            image_url=None,
+            creature_template=None,
+            token_type=None,
+            creature_template_id=token.creature_template_id,
+            controlled_by=token.controlled_by,
+            current_hp=token.current_hp,
+            current_ac=token.current_ac,
+            conditions=token.conditions or [],
+        )
+        
+        # Determine token type and get image URL
+        template_data = None
+        image_url = None
+        
+        if token.creature_template_id:
+            template = await db.get(CreatureTemplate, token.creature_template_id)
+            print(f"DEBUG: Fetched template for ID {token.creature_template_id}: {template}")
+            if template:
+                template_data = template.data if isinstance(template.data, dict) else {}
+                print(f"DEBUG: Template data: {template_data}")
+                # Get image URL from template's image_id
+                if getattr(template, 'image_id', None):
+                    print(f"DEBUG: Template has image_id: {template.image_id}")
+                    image_obj = await db.get(Image, template.image_id)
+                    print(f"DEBUG: Fetched image object: {image_obj}")
+                    if image_obj:
+                        image_url = await media_service.get_image_url(image_obj)
+                        print(f"DEBUG: Generated image_url: {image_url}")
+                
+                token_info.creature_template = {
+                    "id": template.id,
+                    "name": template.name,
+                    "max_hp": template.max_hp,
+                    "ac": template.ac,
+                    "cr": template.cr,
+                    "image_url": image_url,
+                }
+        
+        token_info.token_type = template_data.get("token_type", "creature" if token.creature_template_id else "prop") if template_data is not None else ("creature" if token.creature_template_id else "prop")
+        token_info.image_url = image_url
+        print(f"DEBUG: Final token_info for {token.id}: token_type={token_info.token_type}, image_url={image_url}, creature_template={token_info.creature_template}")
+        
+        result.append(token_info)
+    return result
+
+
+
+
+
+@router.put("/{room_id}/tokens/{token_id}", response_model=RoomTokenInRoom)
+async def update_token(
+        room_id: UUID,
+        token_id: int,
+        token_data: dict,
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_user),
+        s3_client: S3Client = Depends(get_s3_client)
+):
+    """Обновить токен"""
+    service = RoomService(db)
+    if not await service.is_in_room(room_id, current_user.id):
+        raise HTTPException(403, "Вы не в этой комнате")
+
+    token = await service.update_token(token_id, token_data, current_user)
+    media_service = MediaService(s3_client, db)
+
+    token_info = RoomTokenInRoom(
+        id=token.id,
+        name_in_room=token.name_in_room,
+        position_x=token.position_x,
+        position_y=token.position_y,
+        width=token.width,
+        height=token.height,
+        rotation=token.rotation,
+        is_visible=token.is_visible,
+        page_id=token.page_id,
+        image_url=None,
+        creature_template=None,
+        token_type=None,
+        creature_template_id=token.creature_template_id,
+        controlled_by=token.controlled_by,
+        current_hp=token.current_hp,
+        current_ac=token.current_ac,
+        conditions=token.conditions or [],
+    )
+    # Be defensive: token.creature_template might not be an ORM object (if bad data was sent),
+    # so check attributes before accessing.
+    template_data = {}
+    try:
+        if token.creature_template and hasattr(token.creature_template, 'data') and isinstance(token.creature_template.data, dict):
+            template_data = token.creature_template.data
+    except Exception:
+        template_data = {}
+
+    token_info.token_type = template_data.get("token_type", "creature" if token.creature_template_id else "prop")
+
+    # Safe retrieval of image_url and creature template fields
+    image_url = None
+    if getattr(token, 'creature_template', None) and hasattr(token.creature_template, 'image') and token.creature_template.image:
+        try:
+            image_url = await media_service.get_image_url(token.creature_template.image)
+        except Exception:
+            image_url = None
+
+    token_info.image_url = image_url
+    if getattr(token, 'creature_template', None) and hasattr(token.creature_template, 'id'):
+        token_info.creature_template = {
+            "id": getattr(token.creature_template, 'id', None),
+            "name": getattr(token.creature_template, 'name', None),
+            "max_hp": getattr(token.creature_template, 'max_hp', None),
+            "ac": getattr(token.creature_template, 'ac', None),
+            "cr": getattr(token.creature_template, 'cr', None),
+            "image_url": image_url,
+        }
+    else:
+        token_info.creature_template = None
+    return token_info
 
 
 @router.patch("/{room_id}/tokens/{token_id}/position")

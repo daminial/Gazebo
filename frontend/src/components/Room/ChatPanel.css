@@ -81,27 +81,3 @@
   opacity: 0.6;
   cursor: not-allowed;
 }
-
-.chat-send-btn {
-  width: 40px;
-  height: 40px;
-  border: none;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  font-size: 16px;
-  cursor: pointer;
-  transition: transform 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.chat-send-btn:hover:not(:disabled) {
-  transform: scale(.05);
-}
-
-.chat-send-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}

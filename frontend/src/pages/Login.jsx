@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import { FaEye, FaEyeSlash } from 'react-icons/fa'
-import './Auth.css'
+import styles from './Auth.module.css'
 
 export default function Login() {
   const [formData, setFormData] = useState({
@@ -35,20 +35,20 @@ export default function Login() {
   }
 
   return (
-    <div className="auth-page">
-      <header className="auth-header">
-        <div className="logo">
+    <div className={styles['auth-page']}>
+      <header className={styles['auth-header']}>
+        <div className={styles['logo']}>
           <span>Meetgazebo</span>
         </div>
       </header>
 
-      <div className="auth-container">
-        <div className="auth-card">
+      <div className={styles['auth-container']}>
+        <div className={styles['auth-card']}>
           <h1>Вход</h1>
           <form onSubmit={handleSubmit}>
-            <div className="form-group">
+            <div className={styles['form-group']}>
               <input
-                type="username"
+                type="text"
                 name="username"
                 value={formData.username}
                 onChange={handleChange}
@@ -56,10 +56,10 @@ export default function Login() {
                 placeholder="Имя пользователя"
               />
             </div>
-            <div className="form-group">
-              <div className="password-input-wrapper">
+            <div className={styles['form-group']}>
+              <div className={styles['password-input-wrapper']}>
                 <input
-                  type={showPassword ? '' : 'password'}
+                  type={showPassword ? 'text' : 'password'}
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
@@ -68,7 +68,7 @@ export default function Login() {
                 />
                 <button
                   type="button"
-                  className="password-toggle"
+                  className={styles['password-toggle']}
                   onMouseDown={() => setShowPassword(!showPassword)}
                 >
                   {showPassword ? <FaEyeSlash /> : <FaEye />}
@@ -76,12 +76,12 @@ export default function Login() {
               </div>
             </div>
 
-            {error && <p className="error-message">{error}</p>}
+            {error && <p className={styles['error-message']}>{error}</p>}
 
-            <button type="submit" className="btn btn-submit" disabled={loading}>
+            <button type="submit" className={`${styles.btn} ${styles['btn-submit']}`} disabled={loading}>
               {loading ? 'Вход...' : 'Войти'}
             </button>
-            <Link to="/register" className="btn btn-back">
+            <Link to="/register" className={`${styles.btn} ${styles['btn-back']}`}>
               Нет аккаунта? Зарегистрироваться
             </Link>
           </form>

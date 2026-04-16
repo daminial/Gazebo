@@ -130,13 +130,14 @@
 }
 
 .btn-primary {
-  background: #A8C46E;
-  color: #2d2525;
+  background: #5F6C37;
+  border: 1px solid #5F6C37;
+  color: #FEFADF;
 }
 
 .btn-primary:hover {
-  background: #B8D47E;
-  transform: translateY(-1px);
+  background: #ffffff;
+  color: #5F6C37;
 }
 
 .btn-secondary {

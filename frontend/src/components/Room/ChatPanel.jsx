@@ -77,9 +77,6 @@ export function ChatPanel() {
           className="chat-input"
           disabled={!isConnected}
         />
-        <button type="submit" className="chat-send-btn" disabled={!isConnected || !message.trim()}>
-          ➤
-        </button>
       </form>
     </div>
   );

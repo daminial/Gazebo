@@ -12,12 +12,15 @@ export function TokenEditModal({ token, onClose }) {
 
   const handleSave = async () => {
     try {
-      await updateToken(token.id, {
+      const payload = {
         name_in_room: name,
         current_hp: currentHp,
         current_ac: currentAc,
         creature_template_id: creatureTemplateId,
-      })
+      }
+      console.debug('[TokenEditModal] Saving token', token.id, payload)
+      const updated = await updateToken(token.id, payload)
+      console.debug('[TokenEditModal] Update response', updated)
       onClose()
     } catch (err) {
       console.error('Failed to update token:', err)
@@ -83,7 +86,12 @@ export function TokenEditModal({ token, onClose }) {
               <input
                 type="text"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => {
+                  console.debug('[TokenEditModal] name change', e.target.value)
+                  setName(e.target.value)
+                }}
+                onMouseDown={(e) => e.stopPropagation()}
+                onFocus={(e) => e.stopPropagation()}
                 placeholder="Имя токена"
               />
             </div>
@@ -92,14 +100,21 @@ export function TokenEditModal({ token, onClose }) {
               <>
                 <div className="form-group">
                   <label>Здоровье (HP)</label>
-                  <div className="hp-control">
-                    <button onClick={() => handleHpChange(-1)}>-1</button>
+                  <div style={{display: 'flex', alignItems: 'center', gap: 8}}>
                     <input
                       type="number"
                       value={currentHp}
-                      onChange={(e) => setCurrentHp(parseInt(e.target.value) || 0)}
+                      onChange={(e) => {
+                        console.debug('[TokenEditModal] hp change', e.target.value)
+                        setCurrentHp(parseInt(e.target.value) || 0)
+                      }}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onFocus={(e) => e.stopPropagation()}
+                      style={{width: 100}}
+                      min={0}
+                      max={token.creature_template.max_hp || undefined}
                     />
-                    <button onClick={() => handleHpChange(1)}>+1</button>
+                    <span>/ {token.creature_template.max_hp || '?'}</span>
                   </div>
                   <div className="hp-bar-preview">
                     <span>
@@ -121,7 +136,12 @@ export function TokenEditModal({ token, onClose }) {
                   <input
                     type="number"
                     value={currentAc}
-                    onChange={(e) => setCurrentAc(parseInt(e.target.value) || 0)}
+                    onChange={(e) => {
+                      console.debug('[TokenEditModal] ac change', e.target.value)
+                      setCurrentAc(parseInt(e.target.value) || 0)
+                    }}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onFocus={(e) => e.stopPropagation()}
                   />
                 </div>
               </>
@@ -142,7 +162,7 @@ export function TokenEditModal({ token, onClose }) {
 
         <div className="token-edit-actions">
           <button className="btn-delete" onClick={handleDelete}>
-            🗑️ Удалить
+            Удалить
           </button>
           <div className="action-spacer" />
           <button className="btn-cancel" onClick={onClose}>

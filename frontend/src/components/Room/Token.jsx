@@ -63,15 +63,25 @@ export function Token({ token, gridSize, zoom }) {
     document.addEventListener('mouseup', handleMouseUp)
   }
 
-  // Контекстное меню
+  // Контекстное меню (только правая кнопка мыши)
   const handleContextMenu = (e) => {
     e.preventDefault()
     e.stopPropagation()
-    setShowContextMenu({ x: e.clientX, y: e.clientY })
+    // Open menu positioned under token element
+    openTokenMenu()
   }
 
   const handleCloseMenu = () => {
     setShowContextMenu(null)
+  }
+
+  const openTokenMenu = () => {
+    if (elementRef.current) {
+      const rect = elementRef.current.getBoundingClientRect()
+      const centerX = rect.left + rect.width / 2
+      const topY = rect.bottom + 2
+      setShowContextMenu({ x: centerX, y: topY })
+    }
   }
 
   // Определяем внешний вид токена
@@ -141,30 +151,7 @@ export function Token({ token, gridSize, zoom }) {
             }}>
               ✏️ Редактировать
             </button>
-            {token.current_hp !== null && (
-              <>
-                <button className="menu-item" onClick={async () => {
-                  try {
-                    await updateTokenHp(token.id, 1)
-                  } catch (err) {
-                    console.error('Failed to heal:', err)
-                  }
-                  handleCloseMenu()
-                }}>
-                  💚 Лечение +1
-                </button>
-                <button className="menu-item" onClick={async () => {
-                  try {
-                    await updateTokenHp(token.id, -1)
-                  } catch (err) {
-                    console.error('Failed to damage:', err)
-                  }
-                  handleCloseMenu()
-                }}>
-                  ⚔️ Урон -1
-                </button>
-              </>
-            )}
+            {/* HP quick-change removed — use editor for precise HP changes */}
             <button className="menu-item danger" onClick={async () => {
               if (window.confirm('Удалить этот токен?')) {
                 try {
