@@ -110,7 +110,7 @@ class ChatMessage(Base):
                      nullable=True)
     
     content = Column(String, nullable=False)
-    message_type = Column(String, default="text")  # text, dice, system, etc.
+    message_type = Column(String, default="text")
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     

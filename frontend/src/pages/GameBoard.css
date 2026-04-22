@@ -73,7 +73,7 @@
   height: 50px;
   border: none;
   background: rgba(255, 255, 255, 0.1);
-  color: #FDF8E8;
+  color: #FEF3DF;
   font-size: 24px;
   border-radius: 8px;
   cursor: pointer;
@@ -83,14 +83,27 @@
   justify-content: center;
 }
 
+.toolbar-btn svg {
+  color: #FEF3DF;
+  transition: color 0.2s ease;
+}
+
 .toolbar-btn:hover {
   background: rgba(255, 255, 255, 0.2);
+}
+
+.toolbar-btn:hover svg {
+  color: #ffffff;
 }
 
 .toolbar-btn.tool-active {
   background: #A8C46E;
   color: #2d2525;
   box-shadow: 0 0 8px rgba(168, 196, 110, 0.4);
+}
+
+.toolbar-btn.tool-active svg {
+  color: #2d2525;
 }
 
 .toolbar-btn.menu-btn {
@@ -237,7 +250,7 @@
 }
 
 .video-name {
-  color: #FDF8E8;
+  color: #FEF3DF;
   font-size: 14px;
   text-align: center;
   font-weight: 500;
@@ -276,6 +289,41 @@
   gap: 5px;
   border-radius: 0 0 29px 29px;
   margin: 0;
+}
+
+.sidebar-tabs .tab-btn {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-tabs .tab-btn svg {
+  color: #FEF3DF;
+  transition: all 0.2s ease;
+}
+
+.sidebar-tabs .tab-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.sidebar-tabs .tab-btn:hover svg {
+  color: #FEF3DF;
+  transform: scale(1.1);
+}
+
+.sidebar-tabs .tab-btn.active {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.sidebar-tabs .tab-btn.active svg {
+  color: #FEF3DF;
 }
 
 .sidebar-content {
@@ -348,13 +396,6 @@
   margin-bottom: 4px;
 }
 
-.message-text {
-  color: #000000;
-  margin: 0;
-  font-size: 14px;
-  line-height: 1.4;
-}
-
 .dice-roll .message-bubble {
   background: #6B7D4A;
 }
@@ -409,7 +450,7 @@
   background: rgba(90, 107, 58, 0.95);
   padding: 15px;
   border-radius: 12px;
-  color: #FDF8E8;
+  color: #FEF3DF;
   z-index: 99999;
 }
 
@@ -431,7 +472,7 @@
   height: 45px;
   border: 2px solid rgba(255, 255, 255, 0.3);
   background: rgba(255, 255, 255, 0.1);
-  color: #FDF8E8;
+  color: #FEF3DF;
   font-size: 16px;
   border-radius: 8px;
   cursor: pointer;
@@ -483,79 +524,6 @@
   }
 }
 /* Плавающий результат броска */
-.dice-result-floating {
-  position: fixed;
-  top: 80px;
-  right: 320px;
-  background: rgba(0, 0, 0, 0.85);
-  backdrop-filter: blur(10px);
-  padding: 20px 30px;
-  border-radius: 20px;
-  color: white;
-  z-index: 1000;
-  text-align: center;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-  animation: slideDown 0.3s ease-out;
-  border: 1px solid rgba(255,255,255,0.1);
-}
-
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.result-total {
-  font-size: 56px;
-  font-weight: bold;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  line-height: 1;
-  margin-bottom: 10px;
-}
-
-.result-breakdown {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  justify-content: center;
-  margin-top: 15px;
-}
-
-.die-value {
-  padding: 6px 14px;
-  background: rgba(255,255,255,0.1);
-  border-radius: 20px;
-  font-size: 14px;
-  font-weight: 500;
-  border: 1px solid rgba(255,255,255,0.2);
-}
-
-.fallback-badge {
-  margin-top: 10px;
-  font-size: 12px;
-  color: #ff9800;
-  font-style: italic;
-}
-
-.error-badge {
-  margin-top: 10px;
-  font-size: 14px;
-  color: #f44336;
-}
-
-.dice-btn.tool-active {
-  background: #667eea;
-  color: white;
-  animation: pulse 2s infinite;
-}
 
 #dice-canvas-main {
   position: fixed !important;
@@ -565,11 +533,9 @@
   height: 100% !important;
   pointer-events: none !important;
   z-index: 998 !important;
-  background: transparent !important; /* Явно убираем фон */
+  background: transparent !important; 
 }
 
-/* ВАЖНО: Внутренний canvas (который рендерит WebGL) 
-   должен быть видимым, но тоже не перехватывать события */
 #dice-canvas-main canvas {
   position: absolute !important;
   top: 0 !important;

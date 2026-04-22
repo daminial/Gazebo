@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import './DicePanel.css';
+// Импортируем иконки
+import { FaDice, FaWrench, FaPen, FaStar, FaHistory, FaBroom, FaRedo, FaTimes } from 'react-icons/fa';
+import { GiDiceSixFacesTwo } from 'react-icons/gi';
+import { MdRefresh } from 'react-icons/md';
 
 export default function DicePanel({ 
   visible = false, 
@@ -16,9 +20,7 @@ export default function DicePanel({
   const [modifier, setModifier] = useState(0);
   const [customExpr, setCustomExpr] = useState('');
   const [history, setHistory] = useState([]);
-  const [favorites, setFavorites] = useState([
-    '1d20', '2d6', '3d6', '1d100', '1d20+5', '4d6'
-  ]);
+  const [favorites, setFavorites] = useState([]);
 
   // Генерируем выражение
   const generatedExpr = `${count}d${sides}${modifier > 0 ? `+${modifier}` : modifier < 0 ? modifier : ''}`;
@@ -82,10 +84,12 @@ export default function DicePanel({
     <div className="dice-panel-container">
       <div className="dice-panel-header">
         <div className="header-left">
-          <h3>🎲 Кубики</h3>
+          <h3><GiDiceSixFacesTwo style={{ marginRight: '8px' }} /> Кости</h3>
           {!diceReady && <span className="loading-badge">Загрузка...</span>}
         </div>
-        <button className="close-btn" onClick={onClose}>✕</button>
+        <button className="close-btn" onClick={onClose}>
+          <FaTimes />
+        </button>
       </div>
 
       <div className="dice-panel-body">
@@ -95,13 +99,13 @@ export default function DicePanel({
             className={`mode-btn ${mode === 'builder' ? 'active' : ''}`}
             onClick={() => setMode('builder')}
           >
-            🔧 Конструктор
+            <FaWrench style={{ marginRight: '6px' }} /> Конструктор
           </button>
           <button 
             className={`mode-btn ${mode === 'custom' ? 'active' : ''}`}
             onClick={() => setMode('custom')}
           >
-            ✏️ Выражение
+            <FaPen style={{ marginRight: '6px' }} /> Выражение
           </button>
         </div>
 
@@ -155,18 +159,20 @@ export default function DicePanel({
               type="text"
               value={customExpr}
               onChange={e => setCustomExpr(e.target.value)}
-              placeholder="Например: 2d20+1d6+5"
+              placeholder="Например: 2d20+3"
               className="expr-input"
             />
             <div className="expr-hint">
-              Поддерживается: 2d20, 1d6+3, 4d6kh3, 2d20!
+              Поддерживается: 2d20, 1d6+3
             </div>
           </div>
         )}
 
         {/* Избранное */}
         <div className="favorites-section">
-          <div className="section-label">⭐ Избранное</div>
+          <div className="section-label">
+            <FaStar style={{ marginRight: '6px', color: '#ffd700' }} /> Избранное
+          </div>
           <div className="favorites-list">
             {favorites.map((expr, i) => (
               <button
@@ -183,24 +189,9 @@ export default function DicePanel({
                 onClick={() => addToFavorites(customExpr)}
                 title="Добавить в избранное"
               >
-                + Добавить
+                <FaStar style={{ marginRight: '4px' }} /> Добавить
               </button>
             )}
-          </div>
-        </div>
-
-        {/* Быстрые броски */}
-        <div className="quick-rolls-section">
-          <div className="section-label">⚡ Быстрые броски</div>
-          <div className="quick-buttons">
-            <button onClick={() => handleQuickRoll('1d20')}>D20</button>
-            <button onClick={() => handleQuickRoll('1d20+5')}>D20+5</button>
-            <button onClick={() => handleQuickRoll('2d6')}>2D6</button>
-            <button onClick={() => handleQuickRoll('3d6')}>3D6</button>
-            <button onClick={() => handleQuickRoll('4d6')}>4D6</button>
-            <button onClick={() => handleQuickRoll('1d100')}>D100</button>
-            <button onClick={() => handleQuickRoll('2d20')}>2D20</button>
-            <button onClick={() => handleQuickRoll('1d8+2')}>D8+2</button>
           </div>
         </div>
 
@@ -211,7 +202,14 @@ export default function DicePanel({
             onClick={handleRoll}
             disabled={!diceReady || rolling || !currentExpr}
           >
-            {rolling ? '🎲 Бросок...' : `🎲 Бросить ${currentExpr}`}
+            {rolling ? (
+              <>Бросок...</>
+            ) : (
+              <>
+                <GiDiceSixFacesTwo style={{ marginRight: '8px' }} />
+                Бросить {currentExpr}
+              </>
+            )}
           </button>
           
           <div className="secondary-actions">
@@ -219,9 +217,10 @@ export default function DicePanel({
               className="clear-btn" 
               onClick={onClear}
               disabled={!diceReady}
-              title="Очистить кубы"
+              title="Очистить кости"
             >
-              🧹 Очистить
+              <FaBroom style={{ marginRight: '6px' }} />
+              Очистить
             </button>
             
             {mode === 'builder' && (
@@ -230,45 +229,35 @@ export default function DicePanel({
                 onClick={() => addToFavorites(generatedExpr)}
                 title="Добавить в избранное"
               >
-                ⭐
+                <FaStar style={{ color: '#ffd700' }} />
               </button>
             )}
           </div>
         </div>
 
-        {/* История бросков */}
-        {history.length > 0 && (
-          <div className="history-section">
-            <div className="section-label">📜 История</div>
-            <div className="history-list">
-              {history.slice(0, 5).map((item, i) => (
-                <div key={i} className="history-item">
-                  <span className="history-expr">{item.expr}</span>
-                  <span className="history-total">{item.total}</span>
-                  <button 
-                    className="history-reroll"
-                    onClick={() => handleQuickRoll(item.expr)}
-                    title="Повторить"
-                  >
-                    ↻
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* Текущий результат */}
         {lastResult && (
           <div className="current-result">
-            <div className="result-total">{lastResult.total}</div>
-            {lastResult.dice && (
+            <div className="result-total">
+              {typeof lastResult.total === 'number' ? lastResult.total : 0}
+            </div>
+            {lastResult.dice && lastResult.dice.length > 0 && (
               <div className="result-breakdown">
-                {lastResult.dice.map((die, i) => (
-                  <span key={i} className="die-badge">
-                    D{die.sides}: {die.value}
-                  </span>
-                ))}
+                {lastResult.dice.map((die, i) => {
+                  let dieValue = die.value;
+                  let dieSides = die.sides;
+                  
+                  if (typeof dieValue === 'object' && dieValue !== null) {
+                    dieValue = dieValue.value || dieValue.val || 0;
+                    dieSides = dieValue.sides || dieSides;
+                  }
+                  
+                  return (
+                    <span key={i} className="die-badge">
+                      D{dieSides}: {dieValue}
+                    </span>
+                  );
+                })}
               </div>
             )}
           </div>

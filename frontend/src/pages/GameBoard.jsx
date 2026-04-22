@@ -13,7 +13,9 @@ import DicePanel from '../components/Dice/DicePanel'
 import { LuMousePointer2, LuHand } from 'react-icons/lu'
 import { PiPencilSimple, PiTextT } from 'react-icons/pi'
 import { BiCloud } from 'react-icons/bi'
-import { FaRuler } from 'react-icons/fa'
+import { FaRuler, FaDiceD6, FaComment, FaImage, FaMask, FaMusic, FaStickyNote, FaCog, FaEye, FaUsers, FaBars } from 'react-icons/fa'
+import { GiSwordman, GiBattleGear } from 'react-icons/gi'
+import { MdMenu } from 'react-icons/md'
 import './GameBoard.css'
 
 const isDev = process.env.NODE_ENV === 'development'
@@ -32,6 +34,8 @@ function GameBoardContent() {
   const [diceReady, setDiceReady] = useState(false)
   const [diceRolling, setDiceRolling] = useState(false)
   const [diceResult, setDiceResult] = useState(null)
+  const currentNotationRef = useRef('');
+  const currentModifierRef = useRef(0);
 
   const activePage = pages.find(p => p.id === activePageId)
 
@@ -59,66 +63,138 @@ function GameBoardContent() {
   }
 
   const handleDiceRoll = (notation, diceCount = 1) => {
-    if (!diceBoxRef.current || diceRolling) return;
-    
-    setDiceRolling(true);
-    setDiceResult(null);
-    
-    try {
-      const success = diceBoxRef.current.roll(notation, diceCount);
-      if (!success) {
-        setDiceRolling(false);
-      }
-    } catch (error) {
-      console.error('Ошибка броска кубов:', error);
+  if (!diceBoxRef.current || diceRolling) return;
+  
+  currentNotationRef.current = notation;
+  
+  let modifier = 0;
+  const modMatch = notation.match(/([+-]\d+)$/);
+  if (modMatch) {
+    modifier = parseInt(modMatch[1], 10);
+  }
+  currentModifierRef.current = modifier;
+  
+  setDiceRolling(true);
+  setDiceResult(null);
+  
+  try {
+    const success = diceBoxRef.current.roll(notation, diceCount);
+    if (!success) {
       setDiceRolling(false);
       handleFallbackRoll(notation);
     }
-  };
+  } catch (error) {
+    console.error('Ошибка броска костей:', error);
+    setDiceRolling(false);
+    handleFallbackRoll(notation);
+  }
+};
 
   const handleFallbackRoll = (notation) => {
-    try {
-      const diceRegex = /(\d+)d(\d+)/g;
-      let total = 0;
-      let match;
+  try {
+    // Парсим нотацию
+    const diceRegex = /(\d+)d(\d+)/g;
+    let match;
+    const allRolls = [];
+    let total = 0;
+    
+    while ((match = diceRegex.exec(notation)) !== null) {
+      const count = parseInt(match[1], 10);
+      const sides = parseInt(match[2], 10);
       
-      while ((match = diceRegex.exec(notation)) !== null) {
-        const [, count, sides] = match;
-        for (let i = 0; i < Number(count); i++) {
-          total += Math.floor(Math.random() * Number(sides)) + 1;
-        }
+      for (let i = 0; i < count; i++) {
+        const value = Math.floor(Math.random() * sides) + 1;
+        allRolls.push({ sides, value });
+        total += value;
       }
-      
-      const modMatch = notation.match(/([+-]\d+)$/);
-      if (modMatch) {
-        total += Number(modMatch[1]);
-      }
-      
-      const result = { 
-        total, 
-        fallback: true,
-        notation 
-      };
-      
-      setDiceResult(result);
-      sendDiceRoll(notation, total);
-    } catch (error) {
-      console.error('Ошибка fallback броска:', error);
-      setDiceResult({ error: 'Ошибка броска', notation });
-    } finally {
-      setDiceRolling(false);
     }
-  };
-
+    
+    // Парсим модификатор
+    let modifier = 0;
+    const modMatch = notation.match(/([+-]\d+)$/);
+    if (modMatch) {
+      modifier = parseInt(modMatch[1], 10);
+      total += modifier;
+    }
+    
+    const result = { 
+      total, 
+      dice: allRolls,
+      fallback: true,
+      notation,
+      modifier
+    };
+    
+    setDiceResult(result);
+    
+    // Формируем детальную строку
+    const rollValues = allRolls.map(r => r.value);
+    const rollsString = rollValues.join(' + ');
+    const modifierString = modifier !== 0 
+      ? (modifier > 0 ? ` + ${modifier}` : ` - ${Math.abs(modifier)}`)
+      : '';
+    const detailedString = modifierString 
+      ? `${rollsString}${modifierString} = ${total}`
+      : `${rollsString} = ${total}`;
+    
+    sendDiceRoll(notation, total, allRolls, modifier, detailedString);
+  } catch (error) {
+    console.error('Ошибка fallback броска:', error);
+    setDiceResult({ error: 'Ошибка броска', notation });
+  } finally {
+    setDiceRolling(false);
+  }
+};
 
   const handleDiceRollComplete = useCallback((results) => {
     
-    setDiceResult(results)
-    setDiceRolling(false)
+    setDiceResult(results);
+    setDiceRolling(false);
     
     if (results && results.total !== undefined) {
-      const notation = results.dice?.map(d => `d${d.sides}`).join('+') || 'd20'
-      sendDiceRoll(notation, results.total)
+      let rolls = results.dice || [];
+      
+      const normalizedRolls = rolls.map(die => {
+        let actualValue = die.value;
+        let actualSides = die.sides;
+        
+        if (typeof actualValue === 'object' && actualValue !== null) {
+          actualValue = actualValue.value || actualValue.val || 0;
+          actualSides = actualValue.sides || die.sides;
+        }
+        
+        if (typeof actualValue !== 'number') {
+          actualValue = parseInt(actualValue, 10) || 0;
+        }
+        
+        return {
+          sides: actualSides,
+          value: actualValue,
+          rollId: die.rollId
+        };
+      });
+      
+      const total = normalizedRolls.reduce((sum, die) => sum + die.value, 0) + currentModifierRef.current;
+      
+      const notation = currentNotationRef.current;
+      let modifier = currentModifierRef.current;
+      
+      const rollValues = normalizedRolls.map(r => r.value);
+      const rollsString = rollValues.join(' + ');
+      const modifierString = modifier !== 0 
+        ? (modifier > 0 ? ` + ${modifier}` : ` - ${Math.abs(modifier)}`)
+        : '';
+      const detailedString = modifierString 
+        ? `(${rollsString})${modifierString} = ${total}`
+        : `${rollsString} = ${total}`;
+      
+      sendDiceRoll(
+        notation,
+        total,
+        normalizedRolls,
+        modifier,
+        detailedString
+      );
     }
   }, [sendDiceRoll]);
 
@@ -127,10 +203,8 @@ function GameBoardContent() {
   }, []); 
 
   const handleClearDice = () => {
-    
     if (diceBoxRef.current) {
       const result = diceBoxRef.current.clear();
-      
       setDiceResult(null);
       setDiceRolling(false);
     } else {
@@ -138,41 +212,21 @@ function GameBoardContent() {
     }
   }
 
-   return (
-   <div className="game-board">
+  return (
+    <div className="game-board">
       <DiceBox3D
         ref={diceBoxRef}
         onRollComplete={handleDiceRollComplete}
         onReady={handleDiceReady}
         debug={true}
       />
-
-      {/* Плавающий результат броска */}
-      {diceResult && !showDicePanel && (
-        <div className="dice-result-floating">
-          <div className="result-total">{diceResult.total}</div>
-          {diceResult.dice && (
-            <div className="result-breakdown">
-              {diceResult.dice.map((die, i) => (
-                <span key={i} className="die-value">
-                  d{die.sides}: {die.value}
-                </span>
-              ))}
-            </div>
-          )}
-          {diceResult.fallback && (
-            <div className="fallback-badge">(без 3D)</div>
-          )}
-          {diceResult.error && (
-            <div className="error-badge">{diceResult.error}</div>
-          )}
-        </div>
-      )}
-
+  
       {/* Left Toolbar */}
       <aside className="toolbar-left">
         <div className="toolbar-section">
-          <button className="toolbar-btn menu-btn">☰</button>
+          <button className="toolbar-btn menu-btn">
+            <FaBars size={20} />
+          </button>
         </div>
 
         <div className="toolbar-section tools">
@@ -189,22 +243,28 @@ function GameBoardContent() {
         </div>
 
         <div className="toolbar-section">
-          <button className="toolbar-btn" title="Бой">⚔️</button>
+          <button className="toolbar-btn" title="Бой">
+            <GiBattleGear size={20} />
+          </button>
         </div>
 
         <div className="toolbar-section">
           <button
             className={`toolbar-btn dice-btn ${showDicePanel ? 'tool-active' : ''}`}
             onClick={() => setShowDicePanel(s => !s)}
-            title="Кубики"
+            title="Кости"
           >
-            ⬡
+            <FaDiceD6 size={20} />
           </button>
         </div>
 
         <div className="toolbar-section bottom">
-          <button className="toolbar-btn" title="Обзор">👁️</button>
-          <button className="toolbar-btn" title="Игроки">👤</button>
+          <button className="toolbar-btn" title="Обзор">
+            <FaEye size={18} />
+          </button>
+          <button className="toolbar-btn" title="Игроки">
+            <FaUsers size={18} />
+          </button>
         </div>
       </aside>
 
@@ -233,38 +293,44 @@ function GameBoardContent() {
           <button
             className={`tab-btn ${activeTab === 'chat' ? 'active' : ''}`}
             onClick={() => setActiveTab('chat')}
+            title="Чат"
           >
-            💬
+            <FaComment size={18} />
           </button>
           <button
             className={`tab-btn ${activeTab === 'images' ? 'active' : ''}`}
             onClick={() => setActiveTab('images')}
+            title="Изображения"
           >
-            🖼️
+            <FaImage size={18} />
           </button>
           <button
             className={`tab-btn ${activeTab === 'tokens' ? 'active' : ''}`}
             onClick={() => setActiveTab('tokens')}
+            title="Токены"
           >
-            🎭
+            <FaMask size={18} />
           </button>
           <button
             className={`tab-btn ${activeTab === 'music' ? 'active' : ''}`}
             onClick={() => setActiveTab('music')}
+            title="Музыка"
           >
-            🎵
+            <FaMusic size={18} />
           </button>
           <button
             className={`tab-btn ${activeTab === 'notes' ? 'active' : ''}`}
             onClick={() => setActiveTab('notes')}
+            title="Заметки"
           >
-            📝
+            <FaStickyNote size={18} />
           </button>
           <button
             className={`tab-btn ${activeTab === 'settings' ? 'active' : ''}`}
             onClick={() => setActiveTab('settings')}
+            title="Настройки"
           >
-            ⚙️
+            <FaCog size={18} />
           </button>
         </div>
 

@@ -20,7 +20,6 @@ const DiceBox3D = forwardRef(({
   const [error, setError] = useState(null);
   const [currentResults, setCurrentResults] = useState(null);
   
-  // Аудио
   const audioContextRef = useRef(null);
   const audioUnlockedRef = useRef(false);
   const soundIntervalRef = useRef(null);
@@ -28,7 +27,6 @@ const DiceBox3D = forwardRef(({
   const isRollingRef = useRef(false);
   const diceCountRef = useRef(1);
 
-  // 🎲 Функция воспроизведения одного удара
   const playCollisionSound = (intensity = 1.0) => {
     if (!audioContextRef.current || !audioUnlockedRef.current) return;
     
@@ -69,11 +67,9 @@ const DiceBox3D = forwardRef(({
       
       source.start();
     } catch (err) {
-      // Без звука
     }
   };
 
-  // ⏱️ Запуск цикла звуков при броске
   const startSoundLoop = (diceCount = 1) => {
     if (soundIntervalRef.current) {
       clearInterval(soundIntervalRef.current);
@@ -83,11 +79,9 @@ const DiceBox3D = forwardRef(({
     isRollingRef.current = true;
     diceCountRef.current = diceCount;
     
-    // Первый удар - громкость зависит от количества кубов
     const baseIntensity = Math.min(0.8 + (diceCount * 0.05), 1.3);
     playCollisionSound(baseIntensity);
     
-    // Дополнительные начальные удары для большого количества кубов
     if (diceCount >= 3) {
       setTimeout(() => playCollisionSound(baseIntensity * 0.9), 40);
     }
@@ -131,7 +125,6 @@ const DiceBox3D = forwardRef(({
         probability = 0.12 + (diceCount * 0.01);
       }
       
-      // Ограничиваем значения
       intensity = Math.min(Math.max(intensity, 0.1), 1.5);
       probability = Math.min(probability, 0.85);
       
@@ -142,7 +135,6 @@ const DiceBox3D = forwardRef(({
     }, 100);
   };
 
-  // Остановка цикла звуков
   const stopSoundLoop = () => {
     isRollingRef.current = false;
     if (soundIntervalRef.current) {
@@ -150,8 +142,6 @@ const DiceBox3D = forwardRef(({
       soundIntervalRef.current = null;
     }
   };
-
-  // Разблокировка аудио
   const unlockAudio = async () => {
     if (audioUnlockedRef.current) return;
     try {
@@ -218,22 +208,61 @@ const DiceBox3D = forwardRef(({
           return originalRoll.call(this, notation, ...args);
         };
         
-        box.onRollComplete = (results) => {
+       box.onRollComplete = (results) => {
           try {
             stopSoundLoop();
             setIsRolling(false);
             
+            let diceArray = [];
+
+            if (results && Array.isArray(results)) {
+              for (const item of results) {
+                if (item.rolls && Array.isArray(item.rolls)) {
+                  for (const rollValue of item.rolls) {
+                    let actualValue = rollValue;
+                    let actualSides = item.sides;
+                    
+                    if (typeof rollValue === 'object' && rollValue !== null) {
+                      actualValue = rollValue.value || rollValue.val || 0;
+                      actualSides = rollValue.sides || item.sides;
+                    }
+                    
+                    diceArray.push({
+                      sides: actualSides,
+                      value: actualValue,
+                      rollId: `${item.id}_${actualValue}`
+                    });
+                  }
+                } else if (item.value !== undefined && item.sides !== undefined) {
+                  let actualValue = item.value;
+                  let actualSides = item.sides;
+                  
+                  if (typeof actualValue === 'object' && actualValue !== null) {
+                    actualValue = actualValue.value || actualValue.val || 0;
+                    actualSides = actualValue.sides || item.sides;
+                  }
+                  
+                  diceArray.push({
+                    sides: actualSides,
+                    value: actualValue,
+                    rollId: item.rollId || item.id
+                  });
+                }
+              }
+            }
+
+            const total = diceArray.reduce((sum, die) => {
+              const value = typeof die.value === 'number' ? die.value : 0;
+              return sum + value;
+            }, 0);
+
             const formattedResults = {
-              total: results.reduce((sum, die) => sum + die.value, 0),
-              dice: results.map(die => ({
-                sides: die.sides,
-                value: die.value,
-                rollId: die.rollId
-              })),
+              total: total,
+              dice: diceArray,
               raw: results,
               timestamp: Date.now()
             };
-            
+
             setCurrentResults(formattedResults);
             
             if (onRollComplete) onRollComplete(formattedResults);
@@ -285,7 +314,29 @@ const DiceBox3D = forwardRef(({
       
       setIsRolling(true);
       setCurrentResults(null);
-      diceBoxRef.current.roll(notation, diceCount);
+      const result = diceBoxRef.current.roll(notation);
+
+      if (!result && diceBoxRef.current.addDice) {
+        diceBoxRef.current.clear();
+        
+        const diceRegex = /(\d+)d(\d+)/g;
+        let match;
+        const diceToAdd = [];
+        
+        while ((match = diceRegex.exec(notation)) !== null) {
+          const count = parseInt(match[1], 10);
+          const sides = parseInt(match[2], 10);
+          for (let i = 0; i < count; i++) {
+            diceToAdd.push({ sides });
+          }
+        }
+        
+        if (diceToAdd.length > 0) {
+          diceBoxRef.current.addDice(diceToAdd);
+          diceBoxRef.current.roll();
+        }
+      }
+      
       return true;
     },
     
@@ -318,7 +369,7 @@ const DiceBox3D = forwardRef(({
         borderRadius: '10px',
         zIndex: 2000
       }}>
-        <h4>⚠️ Ошибка загрузки кубов</h4>
+        <h4>⚠️ Ошибка загрузки костей</h4>
         <p>{error}</p>
         <button onClick={() => window.location.reload()}>
           Перезагрузить
@@ -367,7 +418,7 @@ const DiceBox3D = forwardRef(({
             animation: 'spin 1s linear infinite',
             marginBottom: '20px'
           }} />
-          <p>Загрузка 3D кубов...</p>
+          <p>Загрузка комнаты...</p>
           <style>{`
             @keyframes spin {
               0% { transform: rotate(0deg); }

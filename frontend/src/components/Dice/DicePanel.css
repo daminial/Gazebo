@@ -141,7 +141,7 @@
 .current-expression code {
   font-family: 'Courier New', monospace;
   font-weight: bold;
-  color: #DCA15D;
+  color: #FEF3DF;
 }
 
 /* Custom Section */
@@ -226,36 +226,6 @@
   border-style: solid;
 }
 
-/* Quick Rolls */
-.quick-rolls-section {
-  margin-bottom: 20px;
-}
-
-.quick-buttons {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-}
-
-.quick-buttons button {
-  padding: 10px;
-  background: #5F6C37;
-  border: 1px solid #273619;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  transition: all 0.2s;
-  color: #FEF3DF;
-}
-
-.quick-buttons button:hover {
-  background: #273619;
-  border-color: #5F6C37;
-  transform: scale(1.05);
-  color: #FEF3DF;
-}
-
 /* Action Section */
 .action-section {
   margin-bottom: 20px;
@@ -329,57 +299,6 @@
   color: #FEF3DF;
 }
 
-/* History Section */
-.history-section {
-  margin-bottom: 20px;
-}
-
-.history-list {
-  background: #5F6C37;
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.history-item {
-  display: flex;
-  align-items: center;
-  padding: 10px 12px;
-  border-bottom: 1px solid #273619;
-}
-
-.history-item:last-child {
-  border-bottom: none;
-}
-
-.history-expr {
-  flex: 1;
-  font-family: 'Courier New', monospace;
-  font-weight: 500;
-  color: #FEF3DF;
-}
-
-.history-total {
-  font-weight: bold;
-  color: #DCA15D;
-  margin-right: 10px;
-}
-
-.history-reroll {
-  padding: 4px 8px;
-  background: transparent;
-  border: 1px solid #FEF3DF;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 16px;
-  transition: all 0.2s;
-  color: #FEF3DF;
-}
-
-.history-reroll:hover {
-  background: #273619;
-  border-color: #DCA15D;
-  color: #DCA15D;
-}
 
 /* Current Result */
 .current-result {
@@ -392,7 +311,7 @@
 .result-total {
   font-size: 48px;
   font-weight: bold;
-  color: #DCA15D;
+  color: #FEF3DF;
   text-shadow: 2px 2px 4px rgba(39,54,25,0.3);
 }
 

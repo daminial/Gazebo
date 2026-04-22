@@ -49,9 +49,6 @@ export function RoomProvider({ roomId, children }) {
           roomsAPI.getPages(roomId),
         ]);
 
-        console.log('Room data from server:', roomRes.data);
-        console.log('Pages from server:', pagesRes.data);
-
         // Загружаем все карты комнаты
         const mapsRes = await roomsAPI.getMaps(roomId);
         setMaps(mapsRes.data);
@@ -188,16 +185,12 @@ export function RoomProvider({ roomId, children }) {
 
         case 'game:chat':
           if (data.type === 'chat:message') {
-            // Пропускаем собственные сообщения
             if (participant === room?.localParticipant) {
               break;
             }
 
-            // Получаем имя пользователя из metadata токена
             let senderName = 'Неизвестный';
             try {
-              console.log('[DEBUG] Participant metadata:', participant?.metadata);
-              console.log('[DEBUG] Participant identity:', participant?.identity);
               if (participant?.metadata) {
                 const metadata = typeof participant.metadata === 'string'
                   ? JSON.parse(participant.metadata)
@@ -208,7 +201,6 @@ export function RoomProvider({ roomId, children }) {
               console.warn('Failed to parse participant metadata:', e);
             }
 
-            console.log('Chat message from:', senderName, data.payload);
             setChatMessages((prev) => [
               ...prev,
               {
@@ -225,20 +217,48 @@ export function RoomProvider({ roomId, children }) {
 
         case 'game:dice':
           if (data.type === 'dice:roll') {
-            console.log('Dice roll:', data.payload);
+            
+            let senderName = data.payload.senderName || 'Игрок';
+            try {
+              if (participant?.metadata) {
+                const metadata = typeof participant.metadata === 'string'
+                  ? JSON.parse(participant.metadata)
+                  : participant.metadata;
+                senderName = metadata.username || senderName;
+              }
+            } catch (e) {
+              console.warn('Failed to parse participant metadata:', e);
+            }
+            
+            setChatMessages((prev) => [
+              ...prev,
+              {
+                id: Date.now(),
+                content: `${data.payload.notation} = ${data.payload.total}`,
+                sender: senderName,
+                timestamp: new Date(),
+                isOwn: false,
+                messageType: 'dice_roll',
+                diceData: {
+                  notation: data.payload.notation,
+                  total: data.payload.total,
+                  rolls: data.payload.rolls,
+                  modifier: data.payload.modifier,
+                  detailedString: data.payload.detailedString
+                }
+              },
+            ]);
           }
           break;
 
         case 'game:page':
           if (data.type === 'page:changed') {
-            console.log('Page changed:', data.payload);
             setActivePageId(data.payload.page_id);
             if (data.payload.map_id) {
               setActiveMapId(data.payload.map_id);
             }
           }
           if (data.type === 'page:background_changed') {
-            console.log('Page background changed:', data.payload);
             setPages(prev => prev.map(p => {
               if (p.id === data.payload.page_id) {
                 return { ...p, map_id: data.payload.map_id };
@@ -247,7 +267,6 @@ export function RoomProvider({ roomId, children }) {
             }));
           }
           if (data.type === 'page:background_removed') {
-            console.log('Page background removed:', data.payload);
             setPages(prev => prev.map(p => {
               if (p.id === data.payload.page_id) {
                 return { ...p, map_id: null };
@@ -256,34 +275,28 @@ export function RoomProvider({ roomId, children }) {
             }));
           }
           if (data.type === 'page:created') {
-            console.log('Page created:', data.payload);
             setPages(prev => [...prev, data.payload]);
           }
           if (data.type === 'page:updated') {
-            console.log('Page updated:', data.payload);
             setPages(prev => prev.map(p =>
               p.id === data.payload.id ? data.payload : p
             ));
           }
           if (data.type === 'page:deleted') {
-            console.log('Page deleted:', data.payload);
             setPages(prev => prev.filter(p => p.id !== data.payload.page_id));
           }
           break;
 
         case 'game:map':
           if (data.type === 'map:added') {
-            console.log('Map added:', data.payload);
             setMaps(prev => [...prev, data.payload]);
           }
           if (data.type === 'map:deleted') {
-            console.log('Map deleted:', data.payload);
             setMaps(prev => prev.filter(m => m.id !== data.payload.map_id));
           }
           break;
 
         default:
-          console.log('Unknown topic:', topic, data);
       }
     } catch (err) {
       console.error('Failed to parse data:', err);
@@ -370,17 +383,55 @@ export function RoomProvider({ roomId, children }) {
   );
 
   const sendDiceRoll = useCallback(
-    (dice_type, result, modifiers = {}) => {
-      sendData(
-        {
-          type: 'dice:roll',
-          payload: { dice_type, result, modifiers },
+  (notation, total, rolls = [], modifier = 0, detailedString = '') => {
+    const tempId = Date.now();
+    const diceMessage = {
+      id: tempId,
+      content: `${notation} = ${total}`,
+      sender: user?.username || 'Вы',
+      timestamp: new Date(),
+      isOwn: true,
+      messageType: 'dice_roll',
+      diceData: {
+        notation,
+        total,
+        rolls,
+        modifier,
+        detailedString
+      }
+    };
+    
+    setChatMessages((prev) => [...prev, diceMessage]);
+    
+    sendData(
+      {
+        type: 'dice:roll',
+        payload: {
+          notation,
+          total,
+          rolls,
+          modifier,
+          detailedString,
+          senderName: user?.username || 'Игрок'
         },
-        'game:dice'
-      );
-    },
-    [sendData]
-  );
+      },
+      'game:dice'
+    );
+    
+    roomsAPI.sendChatMessage(roomId, {
+      content: `${notation} = ${total}`,
+      message_type: 'dice_roll',
+      dice_data: {
+        notation,
+        total,
+        rolls,
+        modifier,
+        detailedString
+      }
+    }).catch(err => console.error('Failed to save dice message:', err));
+  },
+  [sendData, roomId, user, setChatMessages]
+);
 
   // Синхронизация карт
   const syncMapAdded = useCallback(

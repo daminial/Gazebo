@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useRoom } from '../../context/RoomContext';
 import './ChatPanel.css';
+import { FaDiceD6 } from 'react-icons/fa'
 
 export function ChatPanel() {
   const { sendChatMessage, isConnected, chatMessages } = useRoom();
@@ -27,6 +28,36 @@ export function ChatPanel() {
     }
   };
 
+  const DiceRollMessage = ({ message }) => {
+    const diceData = message.diceData;
+    if (!diceData) return <p className="message-text">{message.content}</p>;
+
+    const rollValues = diceData.rolls.map(roll => roll.value);
+    const rollsString = rollValues.join(' + ');
+    
+    const modifierString = diceData.modifier !== 0 
+      ? (diceData.modifier > 0 ? `+ ${diceData.modifier}` : `- ${Math.abs(diceData.modifier)}`)
+      : '';
+    
+    const formulaString = modifierString 
+      ? `(${rollsString}) ${modifierString}`
+      : rollsString;
+
+    return (
+      <div className="dice-roll-content">
+        <div className="dice-roll-header">
+          <span className="message-sender">{message.sender}</span> бросил <span className="dice-notation">{diceData.notation}</span>
+        </div>
+        <div className="dice-roll-formula">
+          {formulaString}
+        </div>
+        <div className="dice-roll-result">
+          = <span className="dice-total-value">{diceData.total}</span>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="chat-panel">
       <div className="chat-header">
@@ -44,10 +75,12 @@ export function ChatPanel() {
             {chatMessages.map((msg) => (
               <div
                 key={msg.id}
-                className={`chat-message ${msg.isOwn ? 'own' : ''}`}
+                className={`chat-message ${msg.isOwn ? 'own' : ''} ${msg.messageType === 'dice_roll' ? 'dice-message' : ''}`}
               >
                 <div className="message-avatar">
-                  {msg.sender.charAt(0).toUpperCase()}
+                  {msg.messageType === 'dice_roll' 
+                    ? <FaDiceD6 /> 
+                    : msg.sender.charAt(0).toUpperCase()}
                 </div>
                 <div className="message-content">
                   <div className="message-header">
@@ -59,7 +92,11 @@ export function ChatPanel() {
                       })}
                     </span>
                   </div>
-                  <p className="message-text">{msg.content}</p>
+                  {msg.messageType === 'dice_roll' ? (
+                    <DiceRollMessage message={msg} />
+                  ) : (
+                    <p className="message-text">{msg.content}</p>
+                  )}
                 </div>
               </div>
             ))}
