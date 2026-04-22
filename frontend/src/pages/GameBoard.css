@@ -410,6 +410,7 @@
   padding: 15px;
   border-radius: 12px;
   color: #FDF8E8;
+  z-index: 99999;
 }
 
 .dice-panel h4 {
@@ -481,4 +482,113 @@
     justify-content: center;
   }
 }
+/* Плавающий результат броска */
+.dice-result-floating {
+  position: fixed;
+  top: 80px;
+  right: 320px;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(10px);
+  padding: 20px 30px;
+  border-radius: 20px;
+  color: white;
+  z-index: 1000;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  animation: slideDown 0.3s ease-out;
+  border: 1px solid rgba(255,255,255,0.1);
+}
 
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.result-total {
+  font-size: 56px;
+  font-weight: bold;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1;
+  margin-bottom: 10px;
+}
+
+.result-breakdown {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 15px;
+}
+
+.die-value {
+  padding: 6px 14px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid rgba(255,255,255,0.2);
+}
+
+.fallback-badge {
+  margin-top: 10px;
+  font-size: 12px;
+  color: #ff9800;
+  font-style: italic;
+}
+
+.error-badge {
+  margin-top: 10px;
+  font-size: 14px;
+  color: #f44336;
+}
+
+.dice-btn.tool-active {
+  background: #667eea;
+  color: white;
+  animation: pulse 2s infinite;
+}
+
+#dice-canvas-main {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  pointer-events: none !important;
+  z-index: 998 !important;
+  background: transparent !important; /* Явно убираем фон */
+}
+
+/* ВАЖНО: Внутренний canvas (который рендерит WebGL) 
+   должен быть видимым, но тоже не перехватывать события */
+#dice-canvas-main canvas {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  display: block !important;
+  pointer-events: none !important;
+  background: transparent !important;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(102, 126, 234, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(102, 126, 234, 0);
+  }
+}

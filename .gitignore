@@ -1,2 +1,108 @@
+<<<<<<< Updated upstream
 scripts/minio_data/
 scripts/minio_data/
+=======
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+*.code-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Python
+.venv/
+venv/
+env/
+ENV/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+.tox/
+.nox/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+*.egg
+dist/
+build/
+wheels/
+
+# Node / Frontend
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/*.local
+frontend/.eslintcache
+*.tsbuildinfo
+
+# Environment files (keep .env.example only)
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+*secret*.env
+secrets.env
+minio_secrets.env
+!.env.example
+
+# Docker
+docker-compose.override.yml
+.dockerignore
+
+# Data & Storage (CRITICAL - these were the problematic ones)
+data/
+volumes/
+minio_data/
+scripts/minio_data/
+scripts/minio_data/**/*
+postgres_data/
+downloads/
+recording/
+minio/
+*.minio.sys
+
+# Logs & DB dumps
+*.log
+logs/
+*.sql
+*.sqlite
+*.sqlite3
+*.db
+
+# Vite cache (extra protection)
+.vite/
+**/.vite/
+
+# Alembic (keep migrations, ignore pycache inside)
+migrations/__pycache__/
+migrations/**/__pycache__/
+
+# Jupyter Notebooks (if any)
+.ipynb_checkpoints/
+*.ipynb
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+.cache/
+>>>>>>> Stashed changes
+frontend/node_modules/
