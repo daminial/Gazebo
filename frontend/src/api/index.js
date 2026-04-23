@@ -154,6 +154,14 @@ export const roomsAPI = {
     api.post(`/rooms/${id}/chat/messages`, messageData),
   bulkSaveChatMessages: (id, messages) => 
     api.post(`/rooms/${id}/chat/messages/bulk`, messages),
+
+  // Рисование
+  saveDrawing: (roomId, pageId, data) => 
+    api.post(`/rooms/${roomId}/pages/${pageId}/drawing`, data),
+  getDrawing: (roomId, pageId) => 
+    api.get(`/rooms/${roomId}/pages/${pageId}/drawing`),
+  clearDrawing: (roomId, pageId) => 
+    api.delete(`/rooms/${roomId}/pages/${pageId}/drawing`),
 }
 
 export const mediaAPI = {

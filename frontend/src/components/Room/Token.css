@@ -18,7 +18,7 @@
 /* Circle token (creatures) */
 .token-circle {
   border-radius: 50%;
-  border: 2px solid #A8C46E;
+  border: 1px solid #A8C46E;
   background: #2d2525;
   overflow: hidden;
 }
@@ -139,4 +139,64 @@
   right: 0;
   bottom: 0;
   z-index: 99998;
+}
+
+
+/* Анимация пульсации для выделенных токенов */
+@keyframes selectionPulse {
+  0% {
+    box-shadow: 0 0 0 0 #AEBDC6;
+  }
+  70% {
+    box-shadow: 0 0 0 4px rgba(0, 255, 221, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(0, 255, 221, 0);
+  }
+}
+
+.token-selected {
+  animation: selectionPulse 1.5s infinite;
+}
+
+@keyframes rectPulse {
+  0% {
+    box-shadow: 0 0 0 0 #AEBDC6;
+  }
+  70% {
+    box-shadow: 0 0 0 3px rgba(0, 255, 221, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(0, 255, 221, 0);
+  }
+}
+
+.token-selection-rect {
+  animation: rectPulse 1.5s infinite;
+}
+
+.map-viewport {
+  cursor: default;
+}
+
+/* Подсветка при наведении на выделение */
+.token-selected:hover ~ .token-selection-rect {
+  border-color: 2px #AEBDC6;
+  box-shadow: 0 0 2px #AEBDC6;
+}
+
+@media (prefers-color-scheme: dark) {
+  .selection-rect {
+    border-color: #AEBDC6;
+    background-color: #AEBDC6;
+  }
+  
+  .token.token-selected {
+    filter: drop-shadow(0 0 6px #AEBDC6);
+  }
+  
+  .token-circle.token-selected {
+    border: 2px solid #AEBDC6 !important;
+    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.2), 0 0 12px #AEBDC6;
+  }
 }

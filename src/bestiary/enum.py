@@ -24,7 +24,7 @@ class CreatureSize(GazeboEnum):
     LARGE = "large"
     HUGE = "huge"
     GARGANTUAN = "gargantuan"
-    COLOSSAL = "colossal"
+    COLOSSAL = "colmodel_dataossal"
 
 
 # class CreatureCondition(str, GazeboEnum):

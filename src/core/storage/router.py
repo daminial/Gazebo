@@ -1,4 +1,3 @@
-# api/v1/media.py
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
 from fastapi.responses import StreamingResponse, RedirectResponse
 from .service import MediaService

@@ -296,6 +296,12 @@ export function RoomProvider({ roomId, children }) {
           }
           break;
 
+        case 'game:drawing':
+          if (window.__handleDrawingData) {
+            window.__handleDrawingData(data);
+          }
+          break;
+
         default:
       }
     } catch (err) {
@@ -814,6 +820,7 @@ export function RoomProvider({ roomId, children }) {
     isConnected,
     participants,
     localParticipant,
+    sendData,
 
     // Комната
     roomId,

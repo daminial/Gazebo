@@ -5,7 +5,7 @@ from src.auth.router import router as auth_router
 from src.rooms.router import router as rooms_router
 from src.bestiary.router import router as bestiary_router
 from src.map.router import router as map_router
-from src.core.storage.test import router as media_router
+from src.core.storage.router import router as media_router
 
 app = FastAPI(title="Gazebo API", redirect_slashes=False)
 

@@ -43,7 +43,6 @@ class RoomService:
             mime_type=file.content_type,
             file_size=len(file_data),
             type=MediaType.IMAGE,
-            # Комнатные загрузки должны оставаться приватными и не попадать в глобальные публичные списки.
             is_public=False,
             caption=caption,
             uploaded_by=user_id,
@@ -82,7 +81,6 @@ class RoomService:
 
         await self.db.flush()
 
-        # Загружаем комнату со всеми relationships
         room = await self.get_room(room.id)
         return room
 

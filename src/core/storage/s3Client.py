@@ -96,7 +96,7 @@ class S3Client:
             return url
 
     async def get_public_url(self, storage_key: str) -> Optional[str]:
-        """Получение публичного URL (если настроено)."""
+        """Получение публичного URL."""
         if self.public_url_base:
             return f"{self.public_url_base.rstrip('/')}/{storage_key}"
         return None

@@ -29,6 +29,7 @@ function GameBoardContent() {
   const [chatMessage, setChatMessage] = useState('')
   const [activeTool, setActiveTool] = useState('select')
   const [showDicePanel, setShowDicePanel] = useState(false)
+  const [measureMode, setMeasureMode] = useState('line')
 
   const diceBoxRef = useRef(null)
   const [diceReady, setDiceReady] = useState(false)
@@ -242,6 +243,14 @@ function GameBoardContent() {
           ))}
         </div>
 
+        {activeTool === 'measure' && (
+        <div className="ruler-submenu">
+          <button className={`ruler-mode-btn ${measureMode === 'line' ? 'active' : ''}`} onClick={() => setMeasureMode('line')}>📏</button>
+          <button className={`ruler-mode-btn ${measureMode === 'circle' ? 'active' : ''}`} onClick={() => setMeasureMode('circle')}>⭕</button>
+          <button className={`ruler-mode-btn ${measureMode === 'cone' ? 'active' : ''}`} onClick={() => setMeasureMode('cone')}>🔺</button>
+        </div>
+      )}
+
         <div className="toolbar-section">
           <button className="toolbar-btn" title="Бой">
             <GiBattleGear size={20} />
@@ -277,6 +286,7 @@ function GameBoardContent() {
             canvasHeight={canvasHeight}
             gridSize={gridSize}
             gridVisible={gridVisible}
+            measureMode={activeTool === 'measure' ? measureMode : null}
           />
           <PagesDropdown />
         </div>

@@ -3,25 +3,30 @@ import { useRoom } from '../../context/RoomContext'
 import { TokenEditModal } from './TokenEditModal'
 import './Token.css'
 
-export function Token({ token, gridSize, zoom }) {
-  const { sendTokenMove, updateRoomSettings, roomId, deleteToken, updateTokenHp } = useRoom()
+export function Token({ token, gridSize, zoom, isSelected = false, onSelect, gridVisible = true }) {
+  const { sendTokenMove, deleteToken } = useRoom()
   const [isDragging, setIsDragging] = useState(false)
   const [showContextMenu, setShowContextMenu] = useState(null)
   const [showEditModal, setShowEditModal] = useState(false)
   const dragStartRef = useRef({ x: 0, y: 0, tokenX: 0, tokenY: 0 })
   const elementRef = useRef(null)
 
-  // Привязка к сетке
   const snapToGrid = useCallback((value) => {
-    return Math.round(value / gridSize) * gridSize
-  }, [gridSize])
+    if (gridVisible) {
+      return Math.round(value / gridSize) * gridSize
+    }
+    return value
+  }, [gridSize, gridVisible])
 
-  // Начало перетаскивания
   const handleMouseDown = (e) => {
-    if (e.button !== 0) return // Только левая кнопка мыши
+    if (e.button !== 0) return
     e.preventDefault()
     e.stopPropagation()
-
+    
+    if (onSelect) {
+      onSelect(token.id, e.ctrlKey || e.metaKey)
+    }
+    
     setIsDragging(true)
     dragStartRef.current = {
       x: e.clientX,
@@ -37,7 +42,6 @@ export function Token({ token, gridSize, zoom }) {
       const newX = dragStartRef.current.tokenX + deltaX
       const newY = dragStartRef.current.tokenY + deltaY
 
-      // Обновляем позицию в реальном времени
       if (elementRef.current) {
         elementRef.current.style.left = `${newX}px`
         elementRef.current.style.top = `${newY}px`
@@ -48,10 +52,17 @@ export function Token({ token, gridSize, zoom }) {
       const deltaX = (upEvent.clientX - dragStartRef.current.x) / zoom
       const deltaY = (upEvent.clientY - dragStartRef.current.y) / zoom
 
-      const finalX = snapToGrid(dragStartRef.current.tokenX + deltaX)
-      const finalY = snapToGrid(dragStartRef.current.tokenY + deltaY)
+      let finalX = dragStartRef.current.tokenX + deltaX
+      let finalY = dragStartRef.current.tokenY + deltaY
+      
+      finalX = snapToGrid(finalX)
+      finalY = snapToGrid(finalY)
 
-      // Отправляем через LiveKit
+      if (elementRef.current) {
+        elementRef.current.style.left = `${finalX}px`
+        elementRef.current.style.top = `${finalY}px`
+      }
+
       sendTokenMove(token.id, finalX, finalY, token.rotation)
 
       setIsDragging(false)
@@ -63,19 +74,9 @@ export function Token({ token, gridSize, zoom }) {
     document.addEventListener('mouseup', handleMouseUp)
   }
 
-  // Контекстное меню (только правая кнопка мыши)
   const handleContextMenu = (e) => {
     e.preventDefault()
     e.stopPropagation()
-    // Open menu positioned under token element
-    openTokenMenu()
-  }
-
-  const handleCloseMenu = () => {
-    setShowContextMenu(null)
-  }
-
-  const openTokenMenu = () => {
     if (elementRef.current) {
       const rect = elementRef.current.getBoundingClientRect()
       const centerX = rect.left + rect.width / 2
@@ -84,11 +85,12 @@ export function Token({ token, gridSize, zoom }) {
     }
   }
 
-  // Определяем внешний вид токена
-  const tokenSize = token.width || gridSize
-  const isCircle = token.token_type !== 'prop' // Круглые для существ, квадратные для prop
+  const handleCloseMenu = () => {
+    setShowContextMenu(null)
+  }
 
-  // Placeholder с первой буквой имени, если нет изображения
+  const tokenSize = token.width || gridSize
+  const isCircle = token.token_type !== 'prop'
   const hasImage = token.image_url || token.creature_template?.image_url
   const firstLetter = token.name_in_room?.charAt(0).toUpperCase() || '?'
 
@@ -96,7 +98,8 @@ export function Token({ token, gridSize, zoom }) {
     <>
       <div
         ref={elementRef}
-        className={`token ${isDragging ? 'dragging' : ''} ${isCircle ? 'token-circle' : 'token-square'}`}
+        data-token-id={token.id}
+        className={`token ${isDragging ? 'dragging' : ''} ${isCircle ? 'token-circle' : 'token-square'} ${isSelected ? 'token-selected' : ''}`}
         style={{
           left: `${token.position_x}px`,
           top: `${token.position_y}px`,
@@ -121,7 +124,6 @@ export function Token({ token, gridSize, zoom }) {
           </div>
         )}
 
-        {/* HP бар */}
         {token.current_hp !== null && token.creature_template?.max_hp && (
           <div className="token-hp-bar">
             <div
@@ -133,25 +135,19 @@ export function Token({ token, gridSize, zoom }) {
           </div>
         )}
 
-        {/* Имя токена */}
         <div className="token-name-label">{token.name_in_room}</div>
       </div>
 
-      {/* Контекстное меню */}
       {showContextMenu && (
         <>
           <div className="context-menu-backdrop" onClick={handleCloseMenu} />
-          <div
-            className="token-context-menu"
-            style={{ left: showContextMenu.x, top: showContextMenu.y }}
-          >
+          <div className="token-context-menu" style={{ left: showContextMenu.x, top: showContextMenu.y }}>
             <button className="menu-item" onClick={() => {
               setShowEditModal(true)
               handleCloseMenu()
             }}>
-              ✏️ Редактировать
+              Редактировать
             </button>
-            {/* HP quick-change removed — use editor for precise HP changes */}
             <button className="menu-item danger" onClick={async () => {
               if (window.confirm('Удалить этот токен?')) {
                 try {
@@ -163,13 +159,12 @@ export function Token({ token, gridSize, zoom }) {
               }
               handleCloseMenu()
             }}>
-              🗑️ Удалить
+              Удалить
             </button>
           </div>
         </>
       )}
 
-      {/* Модальное окно редактирования */}
       {showEditModal && (
         <TokenEditModal
           token={token}

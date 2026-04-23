@@ -7,9 +7,6 @@ from sqlalchemy.orm import relationship
 
 from src.core.database import Base
 
-if TYPE_CHECKING:
-    from src.bestiary.models import RoomToken
-
 
 class RoomUsers(Base):
     __tablename__ = "room_users"
