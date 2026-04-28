@@ -43,6 +43,11 @@ class User(Base):
         cascade="save-update, merge",
         lazy="dynamic"
     )
+    map_templates = relationship(
+        "MapTemplate",
+        back_populates="owner",
+        cascade="all, delete-orphan"
+    )
 
     def __repr__(self):
         return f"<User(id={self.id}, email={self.email})>"

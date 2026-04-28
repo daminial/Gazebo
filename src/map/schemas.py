@@ -1,18 +1,35 @@
-from pydantic import BaseModel, Field, ConfigDict, model_validator
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 from uuid import UUID
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
+from decimal import Decimal
 
 from src.core.storage.schemas import ImageResponse
 
 
+#Схемы для шаблонов карт
 class MapTemplateBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = Field(None, max_length=1000)
 
+
 class MapTemplateCreate(MapTemplateBase):
     is_public: bool = False
     caption: Optional[str] = None
+    tags: Optional[List[str]] = Field(default_factory=list)
+
+    @field_validator('tags', mode='before')
+    @classmethod
+    def validate_tags(cls, v):
+        if v is None:
+            return []
+        if isinstance(v, str):
+            if v.strip() == '':
+                return []
+            return [tag.strip() for tag in v.split(',') if tag.strip()]
+        if isinstance(v, list):
+            return [tag.strip() for tag in v if isinstance(tag, str) and tag.strip()]
+        return []
 
 
 class MapTemplateUpdate(BaseModel):
@@ -20,26 +37,23 @@ class MapTemplateUpdate(BaseModel):
     description: Optional[str] = Field(None, max_length=1000)
     image_id: Optional[int] = Field(None, gt=0)
     is_public: Optional[bool] = None
+    tags: Optional[List[str]] = Field(None, max_length=10)
 
 
 class MapTemplateResponse(MapTemplateBase):
     id: int
     owner_id: UUID
+    image_id: int
+    image: Optional[ImageResponse] = None
+    image_url: Optional[str] = None
     is_public: bool
+    rating: Decimal = Decimal("0.0")
+    votes: int = 0
     created_at: datetime
     updated_at: datetime
+    tags: Optional[List[str]] = None
 
     model_config = ConfigDict(from_attributes=True)
-
-    @model_validator(mode='before')
-    @classmethod
-    def set_extra_fields(cls, data):
-        if hasattr(data, 'image') and data.image:
-            data.is_public = data.image.is_public
-            data.created_at = data.image.created_at
-            data.updated_at = data.image.updated_at
-            data.owner_id = data.image.uploaded_by
-        return data
 
 
 class MapTemplateListItem(BaseModel):
@@ -47,41 +61,37 @@ class MapTemplateListItem(BaseModel):
     name: str
     description: Optional[str]
     image_id: int
-    is_public: bool
+    image_url: Optional[str] = None
     owner_id: UUID
+    is_public: bool
+    rating: Decimal = Decimal("0.0")
+    votes: int = 0
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
 
-    @model_validator(mode='before')
-    @classmethod
-    def set_extra_fields(cls, data):
-        if hasattr(data, 'image') and data.image:
-            data.is_public = data.image.is_public
-            data.created_at = data.image.created_at
-            data.updated_at = data.image.updated_at
-            data.owner_id = data.image.uploaded_by
-        return data
 
-
-#Схемы для карт внутри комнаты
+#Схемы для карт в комнатах
 class RoomMapBase(BaseModel):
     name_in_room: str = Field(..., min_length=1, max_length=255)
 
 
 class RoomMapCreate(RoomMapBase):
     template_id: Optional[int] = Field(None, gt=0)
+    image_id: Optional[int] = Field(None, gt=0)
 
 
 class RoomMapUpdate(BaseModel):
     name_in_room: Optional[str] = Field(None, min_length=1, max_length=255)
     template_id: Optional[int] = Field(None, gt=0)
+    image_id: Optional[int] = Field(None, gt=0)
 
 
 class RoomMapResponse(RoomMapBase):
     id: int
     room_id: UUID
     template_id: Optional[int]
+    image_id: Optional[int]
     created_at: datetime
     updated_at: datetime
 
@@ -91,7 +101,7 @@ class RoomMapResponse(RoomMapBase):
     image_url: Optional[str] = None
     template_name: Optional[str] = None
     template_image_id: Optional[int] = None
-    
+
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -100,12 +110,10 @@ class RoomMapListItem(BaseModel):
     room_id: UUID
     name_in_room: str
     template_id: Optional[int]
+    image_id: Optional[int]
     created_at: datetime
 
     template_name: Optional[str] = None
-    template_image_id: Optional[int] = None
-
-    image_id: Optional[int] = None
     image_url: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)

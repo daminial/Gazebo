@@ -1,8 +1,8 @@
 from io import BytesIO
+from typing import Optional, List
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import List
 
 from src.auth.models import User
 from src.core.database import get_db
@@ -18,6 +18,11 @@ from src.map.schemas import (
     MapTemplateListItem
 )
 from src.map.service import MapTemplateService
+from src.map.exceptions import (
+    TemplateNotFoundError,
+    TemplatePermissionError,
+    ImageNotFoundError
+)
 
 router = APIRouter(prefix="/map-templates", tags=["map-templates"], redirect_slashes=False)
 
@@ -30,67 +35,153 @@ async def create_map_template(
         current_user: User = Depends(get_current_user),
         s3_client: S3Client = Depends(get_s3_client)
 ):
+    """Создать новый шаблон карты"""
     file_data = await file.read()
     file_bytes = BytesIO(file_data)
 
     media_service = MediaService(s3_client=s3_client, db_session=db)
     template_service = MapTemplateService(db=db, media_service=media_service)
 
-    template = await template_service.create_map_template(
-        user_id=current_user.id,
-        name=data.name,
-        file=file_bytes,
-        filename=file.filename,
-        file_size=len(file_data),
-        content_type=file.content_type,
-        description=data.description,
-        is_public=data.is_public,
-        caption=data.caption
-    )
+    try:
+        template = await template_service.create_map_template(
+            user_id=current_user.id,
+            name=data.name,
+            file=file_bytes,
+            filename=file.filename or "map_template.png",
+            file_size=len(file_data),
+            content_type=file.content_type or "image/png",
+            description=data.description,
+            is_public=data.is_public,
+            caption=data.caption,
+            tags=data.tags
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
-    return template
+    return await template_service.to_response(template)
+
+
+@router.get("/public", response_model=List[MapTemplateListItem])
+async def get_public_templates(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(20, ge=1, le=100),
+    tag: Optional[str] = None,
+    db: AsyncSession = Depends(get_db),
+    s3_client: S3Client = Depends(get_s3_client)
+):
+    """Получить публичные шаблоны карт"""
+    template_service = MapTemplateService(db=db, media_service=None)
+    templates = await template_service.get_public_templates(
+        skip=skip,
+        limit=limit,
+        tag=tag
+    )
+    
+    media_service = MediaService(s3_client=s3_client, db_session=db)
+    result = []
+    for template in templates:
+        item = MapTemplateListItem.model_validate(template)
+        if template.image:
+            item.image_url = await media_service.get_image_url(template.image)
+        result.append(item)
+    
+    return result
 
 
 @router.get("/my", response_model=List[MapTemplateListItem])
 async def get_my_templates(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    s3_client: S3Client = Depends(get_s3_client)
 ):
     """Получить мои шаблоны карт"""
     template_service = MapTemplateService(db=db, media_service=None)
     templates = await template_service.get_user_templates(current_user.id)
-    return templates
+    
+    media_service = MediaService(s3_client=s3_client, db_session=db)
+    result = []
+    for template in templates:
+        item = MapTemplateListItem.model_validate(template)
+        if template.image:
+            item.image_url = await media_service.get_image_url(template.image)
+        result.append(item)
+    
+    return result
 
 
 @router.get("/{template_id}", response_model=MapTemplateResponse)
 async def get_map_template(
     template_id: int,
     db: AsyncSession = Depends(get_db),
+    s3_client: S3Client = Depends(get_s3_client)
 ):
     """Получить шаблон карты по ID"""
-    template_service = MapTemplateService(db=db, media_service=None)
+    media_service = MediaService(s3_client=s3_client, db_session=db)
+    template_service = MapTemplateService(db=db, media_service=media_service)
+    
     template = await template_service.get_template(template_id)
+    
     if not isinstance(template, MapTemplate):
         raise HTTPException(status_code=404, detail="Template not found")
-    return template
+    
+    return await template_service.to_response(template)
 
 
-@router.put("/{template_id}", response_model=MapTemplateResponse)
+@router.patch("/{template_id}", response_model=MapTemplateResponse)
 async def update_map_template(
     template_id: int,
     template_data: MapTemplateUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    s3_client: S3Client = Depends(get_s3_client)
 ):
-    """Обновить шаблон карты"""
-    template_service = MapTemplateService(db=db, media_service=None)
-    update_data = template_data.model_dump(exclude_unset=True, exclude={"is_public"})
-    template = await template_service.update_template(
-        template_id=template_id,
-        user_id=current_user.id,
-        **update_data
-    )
-    return template
+    """Частично обновить шаблон карты"""
+    media_service = MediaService(s3_client=s3_client, db_session=db)
+    template_service = MapTemplateService(db=db, media_service=media_service)
+    
+    try:
+        update_data = template_data.model_dump(exclude_unset=True)
+        
+        template = await template_service.update_template(
+            template_id=template_id,
+            user_id=current_user.id,
+            **update_data
+        )
+    except TemplateNotFoundError:
+        raise HTTPException(status_code=404, detail="Template not found")
+    except TemplatePermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except ImageNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    
+    return await template_service.to_response(template)
+
+@router.post("/{template_id}/vote", response_model=MapTemplateResponse)
+async def vote_template(
+    template_id: int,
+    rating: float = Query(..., ge=1, le=5),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    s3_client: S3Client = Depends(get_s3_client)
+):
+    """Проголосовать за шаблон карты"""
+    media_service = MediaService(s3_client=s3_client, db_session=db)
+    template_service = MapTemplateService(db=db, media_service=media_service)
+    
+    try:
+        template = await template_service.vote_template(
+            template_id=template_id,
+            user_id=current_user.id,
+            rating=rating
+        )
+    except TemplateNotFoundError:
+        raise HTTPException(status_code=404, detail="Template not found")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    
+    return await template_service.to_response(template)
 
 
 @router.delete("/{template_id}")
@@ -101,5 +192,12 @@ async def delete_map_template(
 ):
     """Удалить шаблон карты"""
     template_service = MapTemplateService(db=db, media_service=None)
-    await template_service.delete_template(template_id, current_user.id)
+    
+    try:
+        await template_service.delete_template(template_id, current_user.id)
+    except TemplateNotFoundError:
+        raise HTTPException(status_code=404, detail="Template not found")
+    except TemplatePermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    
     return {"message": "Шаблон карты удален"}
