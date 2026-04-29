@@ -194,6 +194,17 @@ export const mapTemplatesAPI = {
     })
   },
   getMy: () => api.get('/map-templates/my'),
+  // Fetch public templates. Backend supports optional single `tag` param and pagination.
+  // `order` is handled client-side (API orders by rating desc by default).
+  getTop: (order = 'desc', tags = null) => {
+    let params = {}
+    if (tags) {
+      // backend accepts a single `tag` query param; use first tag if comma-separated
+      const firstTag = String(tags).split(',').map(t => t.trim()).filter(Boolean)[0]
+      if (firstTag) params.tag = firstTag
+    }
+    return api.get('/map-templates/public', { params })
+  },
   getById: (id) => api.get(`/map-templates/${id}`),
   delete: (id) => api.delete(`/map-templates/${id}`),
 }
