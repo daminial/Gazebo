@@ -19,7 +19,6 @@ export function MapCanvas({ activeTool = 'select', canvasWidth, canvasHeight, gr
   const [showBgPicker, setShowBgPicker] = useState(false)
   const [draggedImage, setDraggedImage] = useState(null)
 
-  // Pan & Zoom state
   const [panX, setPanX] = useState(0)
   const [panY, setPanY] = useState(0)
   const [zoom, setZoom] = useState(1)
@@ -27,13 +26,11 @@ export function MapCanvas({ activeTool = 'select', canvasWidth, canvasHeight, gr
   const panStartRef = useRef({ x: 0, y: 0 })
   const [isDragOver, setIsDragOver] = useState(false)
 
-  // ========== СОСТОЯНИЯ ДЛЯ ВЫДЕЛЕНИЯ ==========
   const [selectedTokenIds, setSelectedTokenIds] = useState([])
   const [selectionRect, setSelectionRect] = useState(null)
   const [isSelecting, setIsSelecting] = useState(false)
   const [selectionStart, setSelectionStart] = useState(null)
 
-  // ========== СОСТОЯНИЯ ДЛЯ ЛИНЕЙКИ ==========
   const [measuring, setMeasuring] = useState(false)
   const [measureStart, setMeasureStart] = useState(null)
   const [measureEnd, setMeasureEnd] = useState(null)
@@ -43,7 +40,6 @@ export function MapCanvas({ activeTool = 'select', canvasWidth, canvasHeight, gr
   const animationFrameRef = useRef(null)
   const measureStartRef = useRef(null)
 
-  // Принудительное обновление при изменении zoom/pan
   useEffect(() => {
     if (measuring && measureStart && measureEnd) {
       setRenderKey(prev => prev + 1)
@@ -70,7 +66,6 @@ export function MapCanvas({ activeTool = 'select', canvasWidth, canvasHeight, gr
 
   const canvasRef = useRef(null)
 
-  // ========== ФУНКЦИИ ЛИНЕЙКИ ==========
   const getDistance = useCallback((x1, y1, x2, y2) => {
     const dx = Math.abs(x2 - x1)
     const dy = Math.abs(y2 - y1)
@@ -114,7 +109,6 @@ export function MapCanvas({ activeTool = 'select', canvasWidth, canvasHeight, gr
     }, 2000)
   }, [])
 
-  // Cleanup animation frame
   useEffect(() => {
     return () => {
       if (animationFrameRef.current) {
@@ -303,7 +297,6 @@ export function MapCanvas({ activeTool = 'select', canvasWidth, canvasHeight, gr
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [showBgPicker])
 
-  // Удаление выделенных токенов
   useEffect(() => {
     const handleKeyDown = (e) => {
       if ((e.key === 'Delete' || e.key === 'Backspace') && selectedTokenIds.length > 0 && activeTool === 'select') {

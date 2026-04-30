@@ -21,7 +21,6 @@ export default function PageCreateModal({ isOpen, onClose, onCreate }) {
       ...prev,
       [name]: type === 'checkbox' ? checked : value
     }))
-    // Сбрасываем ошибку при изменении
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: null }))
     }

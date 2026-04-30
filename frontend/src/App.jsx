@@ -6,6 +6,8 @@ import Login from './pages/Login.jsx'
 import Register from './pages/Register.jsx'
 import Home from './pages/Home.jsx'
 import Map from './pages/Map.jsx'
+import MapEditor from './pages/MapEditor.jsx'
+import Assets from './pages/Assets.jsx'
 import Profile from './pages/Profile.jsx'
 import Companies from './pages/Companies.jsx'
 import CompanyDetail from './pages/CompanyDetail.jsx'
@@ -68,6 +70,12 @@ function AppRoutes() {
           </PrivateRoute>
         } />
         <Route path="map" element={<Map />} />
+        <Route path="map-editor/:id" element={<MapEditor />} />
+        <Route path="assets" element={
+          <PrivateRoute>
+            <Assets />
+          </PrivateRoute>
+        } />
         <Route path="music" element={<Music />} />
         <Route path="help" element={<Help />} />
         <Route path="profile" element={

@@ -1,0 +1,34 @@
+.canvas-editor-root {
+  display: flex;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.palette {
+  width: 220px;
+  background: #fff;
+  border: 1px solid #D4C4A8;
+  padding: 8px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.packs-list { max-height: 120px; overflow: auto; }
+.pack-item { padding: 6px; cursor: pointer; border-radius: 6px; }
+.pack-item.active { background: #eef6e8 }
+.assets-list { display: flex; flex-wrap: wrap; gap: 6px; max-height: 360px; overflow: auto; }
+.assets-list img.asset-item { width: 64px; height: 64px; object-fit: cover; cursor: grab; border: 1px solid #ddd; border-radius: 4px; }
+
+.canvas-editor-area { flex: 1 1 auto; background: #222; padding: 12px; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+.canvas-grid { width: 100%; height: 700px; position: relative; background-image: linear-gradient(#eee 1px, transparent 1px), linear-gradient(90deg, #eee 1px, transparent 1px); }
+.canvas-grid { background-position: 0 0, 0 0; }
+
+.canvas-object { position: absolute; background-size: cover; background-position: center; cursor: move; border: 1px solid transparent; }
+.canvas-object.selected { outline: 2px solid #3b8f3b; }
+
+.editor-tools { width: 200px; display: flex; flex-direction: column; gap: 8px; }
+.editor-tools .btn { display: block; width: 100%; margin-bottom: 6px; }
+.btn-apply { background: #fff; border: 1px solid #5a6b3a; padding: 6px 8px; border-radius: 6px; cursor: pointer; }
+.btn-danger { background: #fff; border: 1px solid #c33; padding: 6px 8px; border-radius: 6px; cursor: pointer; }

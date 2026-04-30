@@ -209,6 +209,46 @@ export const mapTemplatesAPI = {
   delete: (id) => api.delete(`/map-templates/${id}`),
 }
 
+export const mapEditorAPI = {
+  getPacks: () => api.get('/map-editor/packs'),
+  
+  createPack: (data) => api.post('/map-editor/packs', data),
+  
+  updatePack: (id, data) => api.patch(`/map-editor/packs/${id}`, data),
+  
+  deletePack: (id) => api.delete(`/map-editor/packs/${id}`),
+  
+  getPackAssets: (packId) => api.get(`/map-editor/packs/${packId}/assets`),
+  
+  createAsset: (packId, data) => api.post(`/map-editor/packs/${packId}/assets`, data),
+  
+  deleteAsset: (id) => api.delete(`/map-editor/assets/${id}`),
+
+  createProject: (data) => api.post('/map-editor/projects', data),
+  
+  getMyProjects: () => api.get('/map-editor/projects/my'),
+  
+  getProject: (id) => api.get(`/map-editor/projects/${id}`),
+  
+  updateProject: (id, data) => api.patch(`/map-editor/projects/${id}`, data),
+  
+  deleteProject: (id) => api.delete(`/map-editor/projects/${id}`),
+
+  addObject: (projectId, obj) => api.post(`/map-editor/projects/${projectId}/objects`, obj),
+  
+  updateObject: (objectId, obj) => api.patch(`/map-editor/projects/objects/${objectId}`, obj),
+  
+  deleteObject: (objectId) => api.delete(`/map-editor/projects/objects/${objectId}`),
+
+  updateBackground: (projectId, data) => api.patch(`/map-editor/projects/${projectId}/background`, data),
+
+  getProjectByTemplate: (templateId) => api.get(`/map-editor/projects/by-template/${templateId}`),
+
+  saveProject: (projectId, formData) => api.post(`/map-editor/projects/${projectId}/save`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  })
+}
+
 export const bestiaryAPI = {
   getAll: () => api.get('/bestiary'),
   getMy: () => api.get('/bestiary/my'),

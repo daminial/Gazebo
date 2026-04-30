@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
-import { mapTemplatesAPI } from '../api'
+import { mapTemplatesAPI, mapEditorAPI } from '../api'
+import { useNavigate } from 'react-router-dom'
 import './Map.css'
+import { FiMoreHorizontal, FiTrash2 } from 'react-icons/fi'
 
 export default function Map() {
   const [myMaps, setMyMaps] = useState([])
@@ -10,6 +12,30 @@ export default function Map() {
 
   const [order, setOrder] = useState('desc')
   const [tagsInput, setTagsInput] = useState('')
+  const navigate = useNavigate()
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [createStep, setCreateStep] = useState(1)
+  const [projName, setProjName] = useState('')
+  const [projWidth, setProjWidth] = useState(2000)
+  const [projHeight, setProjHeight] = useState(1500)
+  const [projOrientation, setProjOrientation] = useState('horizontal')
+  const [projPublic, setProjPublic] = useState(false)
+  const [availablePacks, setAvailablePacks] = useState([])
+  const [selectedPackId, setSelectedPackId] = useState(null)
+
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deletingMap, setDeletingMap] = useState(null)
+
+  const openCreate = () => {
+    setProjName('')
+    setProjWidth(2000)
+    setProjHeight(1500)
+    setProjOrientation('horizontal')
+    setProjPublic(false)
+    setSelectedPackId(null)
+    setCreateStep(1)
+    setShowCreateModal(true)
+  }
 
   useEffect(() => {
     loadAll()
@@ -24,7 +50,6 @@ export default function Map() {
       ])
       setMyMaps(myRes.data || [])
       let topData = topRes.data || []
-      // API returns rating as string/decimal in some cases; normalize and sort client-side if needed
       topData = topData.map((t) => ({ ...t, rating: Number(t.rating || 0) }))
       if (order === 'asc') topData.sort((a, b) => a.rating - b.rating)
       else topData.sort((a, b) => b.rating - a.rating)
@@ -64,28 +89,232 @@ export default function Map() {
     <div className="map-page">
       <div className="map-header">
         <h1>Карты</h1>
-        <button className="btn-create">Загрузить карту</button>
+        <button onClick={openCreate} className="btn-create">Создать карту</button>
       </div>
+
+      {showCreateModal && (
+        <div className="create-overlay" onClick={() => setShowCreateModal(false)}>
+          <div className="create-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="create-modal-header">
+              <h3>{createStep === 1 ? 'Шаг 1 — Параметры карты' : 'Шаг 2 — Выберите пакет ассетов'}</h3>
+              <button className="create-modal-close" onClick={() => setShowCreateModal(false)}>✕</button>
+            </div>
+
+            <div className="create-modal-body">
+              {createStep === 1 ? (
+                <div className="create-form">
+                  <label className="create-label">
+                    Название
+                    <input
+                      className="create-input"
+                      value={projName}
+                      onChange={(e) => setProjName(e.target.value)}
+                      placeholder="Введите название карты"
+                    />
+                  </label>
+
+                  <label className="create-label">Разрешение</label>
+                  <div className="create-row">
+                    <input
+                      type="number"
+                      className="create-input"
+                      value={projWidth}
+                      onChange={(e) => setProjWidth(Number(e.target.value) || 0)}
+                      placeholder="Ширина"
+                    />
+                    <input
+                      type="number"
+                      className="create-input"
+                      value={projHeight}
+                      onChange={(e) => setProjHeight(Number(e.target.value) || 0)}
+                      placeholder="Высота"
+                    />
+                  </div>
+
+                  <label className="create-label">
+                    Ориентация
+                    <select
+                      className="create-select"
+                      value={projOrientation}
+                      onChange={(e) => setProjOrientation(e.target.value)}
+                    >
+                      <option value="horizontal">Горизонтальная</option>
+                      <option value="vertical">Вертикальная</option>
+                    </select>
+                  </label>
+
+                  <label className="create-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={projPublic}
+                      onChange={(e) => setProjPublic(e.target.checked)}
+                    />
+                    Публичная карта
+                  </label>
+                </div>
+              ) : (
+                <div className="packs-grid">
+                  {availablePacks.map((p) => (
+                    <div
+                      key={p.id}
+                      className={`pack-card ${selectedPackId === p.id ? 'active' : ''}`}
+                      onClick={() => setSelectedPackId(p.id)}
+                    >
+                      <div className="pack-name">{p.name}</div>
+                      <div className="pack-desc">{p.description || 'Без описания'}</div>
+                      <div className="pack-meta">{p.assets_count || 0} ассетов</div>
+                    </div>
+                  ))}
+                  {availablePacks.length === 0 && (
+                    <div className="empty-state">Нет доступных паков</div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="create-modal-footer">
+              <div>
+                {createStep === 2 && (
+                  <button className="btn-secondary" onClick={() => setCreateStep(1)}>
+                    ← Назад
+                  </button>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: 12 }}>
+                <button className="btn-secondary" onClick={() => setShowCreateModal(false)}>
+                  Отмена
+                </button>
+                <button
+                  className="btn-primary"
+                  onClick={async () => {
+                    if (createStep === 1) {
+                      if (!projName) return alert('Укажите название')
+                      try {
+                        const { data } = await mapEditorAPI.getPacks()
+                        setAvailablePacks(data || [])
+                        setCreateStep(2)
+                      } catch (e) {
+                        alert('Ошибка загрузки паков')
+                      }
+                    } else {
+                      try {
+                        const body = {
+                          name: projName,
+                          orientation: projOrientation,
+                          width: projWidth,
+                          height: projHeight,
+                          pack_id: selectedPackId,
+                          is_public: projPublic,
+                        }
+                        const { data } = await mapEditorAPI.createProject(body)
+                        setShowCreateModal(false)
+                        navigate(`/map-editor/${data.id}`)
+                      } catch (e) {
+                        alert('Ошибка создания проекта')
+                      }
+                    }
+                  }}
+                >
+                  {createStep === 1 ? 'Далее' : 'Создать'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <section className="my-maps">
         <h2>Мои карты</h2>
-        <div className="my-maps-row">
+        <div className="my-maps-grid">
           {myMaps.length === 0 ? (
             <div className="no-maps-inline">У вас пока нет карт</div>
           ) : (
             myMaps.map((m) => (
               <div className="my-map-thumb" key={m.id}>
-                {m.image_url ? (
-                  <img src={m.image_url} alt={m.name} />
-                ) : (
-                  <div className="thumb-placeholder">Нет изображения</div>
-                )}
-                <div className="thumb-title">{m.name}</div>
+                <div className="map-actions">
+                  <button
+                    className="map-actions-btn"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      const menu = e.currentTarget.nextElementSibling
+                      menu.style.display = menu.style.display === 'block' ? 'none' : 'block'
+                    }}
+                  >
+                    <FiMoreHorizontal size={16} />
+                  </button>
+                  <div className="map-actions-menu" style={{ display: 'none' }}>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        e.target.closest('.map-actions-menu').style.display = 'none'
+                        setDeletingMap(m)
+                        setShowDeleteModal(true)
+                      }}
+                    >
+                      <FiTrash2 size={14} style={{ marginRight: 6 }} />
+                      Удалить
+                    </button>
+                  </div>
+                </div>
+                <div
+                  onClick={async () => {
+                    try {
+                      const { data: project } = await mapEditorAPI.getProjectByTemplate(m.id)
+                      navigate(`/map-editor/${project.id}`)
+                    } catch (e) {
+                      alert('Этот шаблон нельзя редактировать (проект не найден)')
+                    }
+                  }}
+                  style={{ cursor: 'pointer' }}
+                >
+                  {m.image_url ? (
+                    <img src={m.image_url} alt={m.name} />
+                  ) : (
+                    <div className="thumb-placeholder">Нет изображения</div>
+                  )}
+                  <div className="thumb-title">{m.name}</div>
+                </div>
               </div>
             ))
           )}
         </div>
       </section>
+
+      {showDeleteModal && deletingMap && (
+        <div className="create-overlay" onClick={() => setShowDeleteModal(false)}>
+          <div className="create-modal" style={{ maxWidth: 400 }} onClick={(e) => e.stopPropagation()}>
+            <div className="create-modal-header">
+              <h3>Удалить карту</h3>
+              <button className="create-modal-close" onClick={() => setShowDeleteModal(false)}>✕</button>
+            </div>
+            <div className="create-modal-body">
+              <p style={{ margin: 0, color: '#333', fontSize: 14 }}>
+                Вы уверены, что хотите удалить карту <strong>«{deletingMap.name}»</strong>?
+              </p>
+            </div>
+            <div className="create-modal-footer" style={{ justifyContent: 'flex-end' }}>
+              <button className="btn-secondary" onClick={() => setShowDeleteModal(false)}>
+                Отмена
+              </button>
+              <button
+                className="btn-delete"
+                onClick={async () => {
+                  try {
+                    await mapTemplatesAPI.delete(deletingMap.id)
+                    setShowDeleteModal(false)
+                    setDeletingMap(null)
+                    loadAll()
+                  } catch (err) {
+                    alert('Ошибка удаления')
+                  }
+                }}
+              >
+                Удалить
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <section className="top-maps">
         <div className="top-header">

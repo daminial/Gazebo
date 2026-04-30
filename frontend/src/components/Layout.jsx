@@ -42,6 +42,11 @@ export default function Layout() {
               </Link>
             </li>
             <li>
+              <Link to="/assets" className={location.pathname === '/assets' ? 'active' : ''}>
+                Ассеты
+              </Link>
+            </li>
+            <li>
               <Link to="/music" className={location.pathname === '/music' ? 'active' : ''}>
                 Музыка
               </Link>
