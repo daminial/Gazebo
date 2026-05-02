@@ -1,12 +1,11 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { mapEditorAPI } from '../api'
-import { useNavigate, useParams, useLocation } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import CanvasEditor from '../components/MapEditor/CanvasEditor.jsx'
 import './Map.css'
 
 export default function MapEditor() {
-  const navigate = useNavigate()
-  const location = useLocation()
   const { id: routeId } = useParams()
   const [projectId, setProjectId] = useState(routeId || null)
   const [project, setProject] = useState(null)
@@ -24,9 +23,12 @@ export default function MapEditor() {
   const loadPacks = async () => {
     try {
       const { data } = await mapEditorAPI.getPacks()
-      setPackList(data || [])
+      const packs = data || []
+      setPackList(packs)
+      return packs
     } catch (e) {
       console.warn('Failed to load packs', e)
+      return []
     }
   }
 
@@ -36,9 +38,17 @@ export default function MapEditor() {
       const { data } = await mapEditorAPI.getProject(id)
       setProject(data)
       setProjectId(data.id)
+
+      const packs = await loadPacks()
       if (data.pack_id) {
-        const pack = packList.find(p => p.id === data.pack_id)
-        if (pack) setSelectedPack(pack)
+        const pack = packs.find(p => p.id === data.pack_id)
+        if (pack) {
+          setSelectedPack(pack)
+        } else if (packs.length > 0) {
+          setSelectedPack(packs[0])
+        }
+      } else if (packs.length > 0) {
+        setSelectedPack(packs[0])
       }
     } catch (e) {
       console.error('Failed to load project', e)
@@ -50,17 +60,20 @@ export default function MapEditor() {
   const createProject = async () => {
     setLoading(true)
     try {
+      const activePack = selectedPack || (packList.length > 0 ? packList[0] : null)
+
       const body = {
         name: 'New project',
         orientation: 'horizontal',
         width: 2000,
         height: 1500,
-        pack_id: selectedPack?.id || null,
+        pack_id: activePack?.id || null,
         is_public: false
       }
       const { data } = await mapEditorAPI.createProject(body)
       setProjectId(data.id)
       setProject(data)
+      if (activePack) setSelectedPack(activePack)
     } catch (e) {
       console.error('Failed create project', e)
     } finally {
@@ -68,7 +81,7 @@ export default function MapEditor() {
     }
   }
 
-const handleSaveRendered = async ({ name, description, tags, is_public, blob }) => {
+  const handleSaveRendered = async ({ name, description, tags, is_public, blob }) => {
     if (!projectId) return
     const fd = new FormData()
     fd.append('rendered_image', blob, `${name || 'map'}.png`)
@@ -101,24 +114,19 @@ const handleSaveRendered = async ({ name, description, tags, is_public, blob }) 
     )
   }
 
-  return (
-    <div className="map-page">
-      <div className="map-header">
-        <h1>Редактор карт</h1>
-        <span>{project?.name || 'Untitled'}</span>
-      </div>
-
-      <div className="editor-panel">
-        <CanvasEditor
-          projectId={projectId}
-          packs={packList}
-          selectedPack={selectedPack}
-          initialObjects={project?.scene_objects || []}
-          projectName={project?.name || 'Моя карта'}
-          onSelectPack={(p) => setSelectedPack(p)}
-          onSaveRendered={handleSaveRendered}
-        />
-      </div>
-    </div>
+  // Рендерим редактор через портал прямо в body
+  return createPortal(
+    <div className="map-editor-page">
+      <CanvasEditor
+        projectId={projectId}
+        packs={packList}
+        selectedPack={selectedPack}
+        initialObjects={project?.scene_objects || []}
+        projectName={project?.name || 'Моя карта'}
+        onSelectPack={(p) => setSelectedPack(p)}
+        onSaveRendered={handleSaveRendered}
+      />
+    </div>,
+    document.body
   )
 }

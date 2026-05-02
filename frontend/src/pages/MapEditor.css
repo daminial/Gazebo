@@ -1,0 +1,180 @@
+/* ===== СТИЛИ ДЛЯ MAP EDITOR ===== */
+
+/* Страница редактора */
+.map-editor-page {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  position: relative;
+  margin: 0;
+  padding: 0;
+}
+
+/* Контейнер для CanvasEditor после навбара */
+.editor-fullscreen-container {
+  position: absolute;
+  top: 48px; /* высота top-navbar */
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+}
+
+/* Верхняя панель навигации */
+.top-navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 48px;
+  background: #FEF3DF;
+  border-bottom: 1px solid #E0D5C0;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  z-index: 2000;
+  gap: 12px;
+}
+
+.nav-hamburger-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+
+.nav-hamburger-btn:hover {
+  background: rgba(90, 107, 58, 0.1);
+}
+
+.hamburger-icon {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 20px;
+}
+
+.hamburger-icon span {
+  display: block;
+  height: 2px;
+  background: #5A6B3A;
+  border-radius: 1px;
+  transition: all 0.2s;
+}
+
+.nav-hamburger-btn:hover .hamburger-icon span {
+  background: #3a4b1a;
+}
+
+.nav-project-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #5A6B3A;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Выпадающее меню навигации */
+.nav-dropdown-menu {
+  position: absolute;
+  top: 48px;
+  left: 8px;
+  background: #FEF3DF;
+  border: 1px solid #E0D5C0;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  min-width: 220px;
+  z-index: 2100;
+  padding: 4px;
+  animation: slideDown 0.15s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.nav-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  background: none;
+  font-size: 13px;
+  color: #333;
+  cursor: pointer;
+  border-radius: 6px;
+  text-align: left;
+  transition: all 0.15s;
+}
+
+.nav-menu-item:hover {
+  background: #F0F4E8;
+  color: #5A6B3A;
+}
+
+.nav-menu-item.active {
+  background: #E8F4E3;
+  color: #5A6B3A;
+  font-weight: 600;
+}
+
+.nav-menu-item span {
+  font-size: 16px;
+}
+
+.nav-menu-divider {
+  height: 1px;
+  background: #E0D5C0;
+  margin: 4px 8px;
+}
+
+.nav-menu-section {
+  padding: 4px 0;
+}
+
+.nav-menu-label {
+  display: block;
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #999;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.map-editor-page {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+}
+.map-editor-page {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  z-index: 9999;
+  background: #f5f5f5;
+}
