@@ -1,5 +1,5 @@
-from typing import Annotated
-from fastapi import APIRouter, Depends, status
+from typing import Annotated, List
+from fastapi import APIRouter, Depends, status, Query
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,6 +18,7 @@ from src.auth.service import AuthService
 from src.auth.dependencies import (
     CurrentUser,
     CurrentActiveUser,
+    get_current_active_user,
 )
 from src.auth.exceptions import InvalidCredentialsException
 
@@ -105,3 +106,16 @@ async def update_current_user(
     auth_service = AuthService(db)
     updated_user = await auth_service.update_user(current_user, update_data)
     return updated_user
+
+
+@router.get("/users/search", response_model=List[UserPublic])
+async def search_users(
+        current_user: CurrentActiveUser,
+        q: str = Query(..., min_length=1, max_length=50),
+        limit: int = Query(10, ge=1, le=50),
+        db: AsyncSession = Depends(get_db)
+):
+    """Поиск пользователей по username или email"""
+    auth_service = AuthService(db)
+    users = await auth_service.search_users(q, current_user.id, limit)
+    return users

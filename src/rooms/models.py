@@ -171,7 +171,13 @@ class Room(Base):
                                  cascade="all, delete-orphan",
                                  foreign_keys="ChatMessage.room_id",
                                  order_by="ChatMessage.created_at")
+    
+    audio_player = relationship("RoomAudioPlayer", 
+                                back_populates="room",
+                                uselist=False, 
+                                cascade="all, delete-orphan")
 
-    # audio_players = relationship("RoomAudioPlayer", back_populates="room",
-    #                              cascade="all, delete-orphan",
-    #                              foreign_keys="RoomAudioPlayer.room_id")
+    audio_tracks = relationship("RoomAudioTrack", 
+                                back_populates="room",
+                                cascade="all, delete-orphan",
+                                foreign_keys="RoomAudioTrack.room_id")

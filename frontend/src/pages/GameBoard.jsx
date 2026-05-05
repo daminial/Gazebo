@@ -10,6 +10,7 @@ import { PagesDropdown } from '../components/Room/PagesDropdown'
 import { RoomSettingsPanel } from '../components/Room/RoomSettingsPanel'
 import DiceBox3D from '../components/Dice/DiceBox3D'
 import DicePanel from '../components/Dice/DicePanel'
+import { AudioPlayer } from '../components/Room/AudioPlayer'
 import { LuMousePointer2, LuHand } from 'react-icons/lu'
 import { PiPencilSimple, PiTextT } from 'react-icons/pi'
 import { BiCloud } from 'react-icons/bi'
@@ -354,12 +355,7 @@ function GameBoardContent() {
           )}
           {activeTab === 'images' && <ImagesPanel />}
           {activeTab === 'tokens' && <TokensPanel />}
-          {activeTab === 'music' && (
-            <div className="tab-placeholder">
-              <h3>Музыка</h3>
-              <p>Аудио треки для игры</p>
-            </div>
-          )}
+          {activeTab === 'music' && <AudioPlayer />}
           {activeTab === 'notes' && (
             <div className="tab-placeholder">
               <h3>Заметки</h3>

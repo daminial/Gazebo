@@ -124,3 +124,20 @@ class AuthService:
             setattr(user, field, value)
 
         return user
+
+    async def search_users(self, query: str, current_user_id: UUID, limit: int = 10) -> list[User]:
+        """Поиск пользователей по username или email"""
+        from sqlalchemy import or_, and_
+        
+        stmt = select(User).where(
+            and_(
+                User.id != current_user_id,
+                or_(
+                    User.username.ilike(f"%{query}%"),
+                    User.email.ilike(f"%{query}%")
+                )
+            )
+        ).limit(limit)
+        
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())

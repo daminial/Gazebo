@@ -6,6 +6,7 @@ from src.rooms.router import router as rooms_router
 from src.bestiary.router import router as bestiary_router
 from src.map.router import router as map_router
 from src.core.storage.router import router as media_router
+from src.audio.router import router as audio_router
 from src.map_editor.router import router as map_editor_router
 
 app = FastAPI(title="Gazebo API", redirect_slashes=False)
@@ -34,6 +35,7 @@ app.include_router(bestiary_router)
 app.include_router(map_router)
 app.include_router(map_editor_router)
 app.include_router(media_router)
+app.include_router(audio_router)
 
 
 @app.get("/")

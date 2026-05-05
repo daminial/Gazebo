@@ -104,57 +104,34 @@ class MediaFileUpdate(BaseModel):
 
 
 class MediaFileResponse(BaseModel):
-    """Схема ответа с данными медиафайла"""
+    """Базовая схема ответа — только общие для всех медиа поля"""
     id: int
     storage_provider: str
     storage_key: str
-    bucket: str  # Made required
+    bucket: str
     filename: str
     extension: str
     mime_type: str
     file_size: int
-
     media_type: MediaType
-
     created_at: datetime
     updated_at: Optional[datetime] = None
     uploaded_by: UUID
     is_public: bool
     deleted_at: Optional[datetime] = None
-
-    caption: Optional[str] = None
-    palette: Optional[List[str]] = None
-    is_dark: Optional[bool] = None
-
     download_url: Optional[HttpUrl] = None
     public_url: Optional[HttpUrl] = None
 
-    model_config = ConfigDict(
-        from_attributes=True,
-        json_schema_extra={
-            "example": {
-                "id": 1,
-                "filename": "dungeon_map",
-                "extension": "jpg",
-                "mime_type": "image/jpeg",
-                "file_size": 2048576,
-                "media_type": "image",
-                "uploaded_by": "123e4567-e89b-12d3-a456-426614174000",
-                "created_at": "2024-01-15T10:30:00",
-                "is_public": True,
-                "storage_provider": "s3",
-                "storage_key": "maps/2026/03/05/dungeon_map.jpg",
-                "bucket": "gazebo-maps",
-                "public_url": "https://storage.example.com/gazebo-maps/maps/2026/03/05/dungeon_map.jpg"
-            }
-        }
-    )
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ImageResponse(MediaFileResponse):
     """Специализированный ответ для изображений"""
     media_type: MediaType = MediaType.IMAGE
-
+    
+    caption: Optional[str] = None
+    palette: Optional[List[str]] = None
+    is_dark: Optional[bool] = None
     width: Optional[int] = None
     height: Optional[int] = None
     blurhash: Optional[str] = None
@@ -166,19 +143,17 @@ class ImageResponse(MediaFileResponse):
 
 
 class AudioResponse(MediaFileResponse):
-    """Специализированный ответ для аудио"""
+    """Специализированный ответ для аудио — только аудио-поля"""
     media_type: MediaType = MediaType.AUDIO
-
+    
     duration_seconds: Optional[int] = None
     bitrate: Optional[int] = None
     sample_rate: Optional[int] = None
     audio_codec: Optional[str] = None
-
     title: Optional[str] = None
     artist: Optional[str] = None
     album: Optional[str] = None
     genre: Optional[str] = None
-
     waveform_data: Optional[List[float]] = None
     loudness: Optional[float] = None
 

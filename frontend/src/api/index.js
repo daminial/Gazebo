@@ -9,7 +9,6 @@ const api = axios.create({
   },
 })
 
-// Интерцептор для добавления токена
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('access_token')
@@ -21,12 +20,10 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 )
 
-// Интерцептор для обработки ошибок
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     if (error.response?.status === 401) {
-      // Токен истёк, пробуем обновить
       const refreshToken = localStorage.getItem('refresh_token')
       if (refreshToken) {
         try {
@@ -58,6 +55,7 @@ export const authAPI = {
   getMe: () => api.get('/auth/me'),
   updateMe: (data) => api.put('/auth/me', data),
   refreshToken: (refreshToken) => api.post('/auth/refresh', { refresh_token: refreshToken }),
+  searchUsers: (query) => api.get(`/auth/users/search?q=${encodeURIComponent(query)}`),
 }
 
 export const roomsAPI = {
@@ -143,7 +141,7 @@ export const roomsAPI = {
   
   // Участники
   getUsers: (id) => api.get(`/rooms/${id}/users`),
-  addUser: (id, userId, role = 'PLAYER') => api.post(`/rooms/${id}/users/${userId}?role=${role}`),
+  addUser: (id, userId, role = 'player') => api.post(`/rooms/${id}/users/${userId}?role=${role.toLowerCase()}`),
   removeUser: (id, userId) => api.delete(`/rooms/${id}/users/${userId}`),
   updateUserRole: (id, userId, role) => api.patch(`/rooms/${id}/users/${userId}/role`, { room_role: role }),
 
@@ -162,7 +160,21 @@ export const roomsAPI = {
     api.get(`/rooms/${roomId}/pages/${pageId}/drawing`),
   clearDrawing: (roomId, pageId) => 
     api.delete(`/rooms/${roomId}/pages/${pageId}/drawing`),
-}
+
+   // Аудио
+  getPlayerState: (roomId) => api.get(`/audio/rooms/${roomId}/player`),
+  getAudioTracks: (roomId) => api.get(`/audio/rooms/${roomId}/tracks`),
+  addAudioToRoom: (roomId, data) => api.post(`/audio/rooms/${roomId}/tracks`, data),
+  removeAudioFromRoom: (roomId, trackId) => api.delete(`/audio/rooms/${roomId}/tracks/${trackId}`),
+  updatePlayerState: (roomId, data) => api.patch(`/audio/rooms/${roomId}/player`, data),
+  getPlaylists: () => api.get('/audio/playlists'),
+  createPlaylist: (data) => api.post('/audio/playlists', data),
+  addTrackToPlaylist: (playlistId, data) => api.post(`/audio/playlists/${playlistId}/tracks`, data),
+  getLibraryAudio: (search = '') => api.get(`/audio/library${search ? `?search=${search}` : ''}`),
+  uploadAudio: (formData) => api.post('/audio/upload', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+};
 
 export const mediaAPI = {
   uploadImage: (formData) => api.post('/media/upload/image', formData, {
@@ -194,12 +206,9 @@ export const mapTemplatesAPI = {
     })
   },
   getMy: () => api.get('/map-templates/my'),
-  // Fetch public templates. Backend supports optional single `tag` param and pagination.
-  // `order` is handled client-side (API orders by rating desc by default).
   getTop: (order = 'desc', tags = null) => {
     let params = {}
     if (tags) {
-      // backend accepts a single `tag` query param; use first tag if comma-separated
       const firstTag = String(tags).split(',').map(t => t.trim()).filter(Boolean)[0]
       if (firstTag) params.tag = firstTag
     }

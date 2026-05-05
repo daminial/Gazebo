@@ -54,7 +54,6 @@ async def get_image(
         logger.warning(f"У изображения {image_id} нет storage_key")
         raise HTTPException(404, "Изображение не найдено")
     
-    # Получаем изображение из S3 и проксируем клиенту
     s3 = S3Client(
         endpoint_url=settings.S3_ENDPOINT_URL,
         access_key=settings.S3_ACCESS_KEY,
@@ -63,7 +62,6 @@ async def get_image(
         public_url_base=settings.S3_PUBLIC_URL
     )
     
-    # Скачиваем файл из S3 в память
     import io
     file_buffer = io.BytesIO()
     
@@ -85,6 +83,54 @@ async def get_image(
         }
     )
 
+@router.get("/audio/{audio_id}")
+async def get_audio(
+        audio_id: int,
+        db: AsyncSession = Depends(get_db)
+):
+    """Проксирование аудиофайла из S3"""
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    from src.core.storage.models import Audio
+    
+    stmt = select(Audio).where(Audio.id == audio_id)
+    result = await db.execute(stmt)
+    audio = result.scalar_one_or_none()
+    
+    if not audio:
+        raise HTTPException(404, "Аудиофайл не найден")
+    
+    if not audio.storage_key:
+        raise HTTPException(404, "Аудиофайл не найден в хранилище")
+    
+    s3 = S3Client(
+        endpoint_url=settings.S3_ENDPOINT_URL,
+        access_key=settings.S3_ACCESS_KEY,
+        secret_key=settings.S3_SECRET_KEY,
+        bucket=settings.S3_BUCKET_NAME,
+        public_url_base=settings.S3_PUBLIC_URL
+    )
+    
+    import io
+    file_buffer = io.BytesIO()
+    
+    try:
+        await s3.download_fileobj(audio.storage_key, file_buffer)
+    except Exception as e:
+        raise HTTPException(404, f"Файл не найден в хранилище: {e}")
+    
+    file_buffer.seek(0)
+    
+    return StreamingResponse(
+        file_buffer,
+        media_type=audio.mime_type,
+        headers={
+            "Cache-Control": "public, max-age=31536000",
+            "Accept-Ranges": "bytes",
+        }
+    )
+
 
 @router.post("/upload/image", response_model=MediaFileResponse)
 async def upload_image(
@@ -92,20 +138,17 @@ async def upload_image(
         service: MediaService = Depends(get_media_service),
         current_user: User = Depends(get_current_user)
 ):
-    # Проверка типа файла
     if not file.content_type.startswith('image/'):
         raise HTTPException(400, "Only images allowed")
 
-    # Создание схемы с реальным user_id из current_user
     image_data = ImageCreate(
         filename=file.filename.rsplit('.', 1)[0],
         extension=file.filename.split('.')[-1],
         mime_type=file.content_type,
         file_size=file.size or 0,
-        uploaded_by=current_user.id,  # берем из текущего пользователя
+        uploaded_by=current_user.id,
         is_public=True
     )
 
-    # Загрузка
     result = await service.upload_file(file.file, image_data, user_id=current_user.id)
     return result

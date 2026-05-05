@@ -12,18 +12,17 @@ export function RoomProvider({ roomId, children }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Состояние комнаты
   const [maps, setMaps] = useState([]);
   const [tokens, setTokens] = useState([]);
   const [activeMapId, setActiveMapId] = useState(null);
   
-  // Страницы и настройки
   const [pages, setPages] = useState([]);
   const [activePageId, setActivePageId] = useState(null);
   const [roomSettings, setRoomSettings] = useState(null);
   const [isDm, setIsDm] = useState(false);
+  const [audioPlayerState, setAudioPlayerState] = useState(null);
+  const [currentPlaylist, setCurrentPlaylist] = useState(null);
 
-  // Загрузка токена LiveKit
   useEffect(() => {
     async function fetchLiveKitToken() {
       try {
@@ -39,7 +38,6 @@ export function RoomProvider({ roomId, children }) {
     fetchLiveKitToken();
   }, [roomId]);
 
-  // Загрузка карт, токенов, страниц и настроек
   useEffect(() => {
     async function loadRoomData() {
       try {
@@ -49,11 +47,9 @@ export function RoomProvider({ roomId, children }) {
           roomsAPI.getPages(roomId),
         ]);
 
-        // Загружаем все карты комнаты
         const mapsRes = await roomsAPI.getMaps(roomId);
         setMaps(mapsRes.data);
 
-        // Привязываем карты к страницам
         const pagesData = pagesRes.data || [];
         const pagesWithMaps = pagesData.map((page) => ({
           ...page,
@@ -61,7 +57,6 @@ export function RoomProvider({ roomId, children }) {
         }));
         setPages(pagesWithMaps);
 
-        // Устанавливаем активную страницу
         if (pagesWithMaps.length > 0) {
           const activePageIdFromServer = roomRes.data.current_page_id
             || pagesWithMaps[0]?.id;
@@ -75,7 +70,6 @@ export function RoomProvider({ roomId, children }) {
 
         setTokens(tokensRes.data);
 
-        // Настройки комнаты
         if (roomRes.data.settings) {
           setRoomSettings(roomRes.data.settings);
         }
@@ -90,7 +84,6 @@ export function RoomProvider({ roomId, children }) {
     loadRoomData();
   }, [roomId]);
 
-  // Определяем роль текущего пользователя в комнате
   useEffect(() => {
     async function loadUserRole() {
       try {
@@ -114,7 +107,6 @@ export function RoomProvider({ roomId, children }) {
     if (user) loadUserRole();
   }, [roomId, user]);
 
-  // Загрузка истории чата при подключении
   const [chatMessages, setChatMessages] = useState([]);
   
   useEffect(() => {
@@ -126,7 +118,7 @@ export function RoomProvider({ roomId, children }) {
           content: msg.content,
           sender: msg.username || 'Неизвестный',
           timestamp: new Date(msg.created_at),
-          isOwn: msg.user_id === null, // Будет обновлено после подключения
+          isOwn: msg.user_id === null,
           userId: msg.user_id,
           messageType: msg.message_type,
         }));
@@ -139,7 +131,6 @@ export function RoomProvider({ roomId, children }) {
     loadChatHistory();
   }, [roomId]);
 
-  // Подключение к LiveKit
   const {
     room,
     isConnected,
@@ -149,10 +140,8 @@ export function RoomProvider({ roomId, children }) {
     setOnData,
   } = useLiveKit(roomId, livekitToken, livekitUrl);
 
-  // Обработчик данных из Data Channel
   const handleDataReceived = useCallback((payload, participant, kind, topic) => {
     try {
-      // Декодируем payload (может быть Uint8Array)
       const decoded = typeof payload === 'string'
         ? payload
         : new TextDecoder().decode(payload);
@@ -171,7 +160,6 @@ export function RoomProvider({ roomId, children }) {
           }
           if (data.type === 'token:created') {
             setTokens((prev) => {
-              // Проверяем, нет ли уже такого токена
               if (prev.find(t => t.id === data.payload.id)) {
                 return prev;
               }
@@ -301,6 +289,14 @@ export function RoomProvider({ roomId, children }) {
             window.__handleDrawingData(data);
           }
           break;
+        
+        case 'game:audio':
+          if (data.type === 'audio:player_command') {
+            window.dispatchEvent(new CustomEvent('audio-player-command', {
+              detail: data.payload
+            }));
+          }
+          break;
 
         default:
       }
@@ -309,25 +305,20 @@ export function RoomProvider({ roomId, children }) {
     }
   }, [room, setActivePageId, setActiveMapId]);
 
-  // Устанавливаем обработчик данных
   useEffect(() => {
     setOnData(handleDataReceived);
   }, [setOnData, handleDataReceived]);
 
-  // Методы для отправки игровых событий
   const sendTokenMove = useCallback(
     async (token_id, x, y, rotation = null) => {
-      // Сначала сохраняем позицию на бэке
         try {
           await roomsAPI.updateTokenPosition(roomId, token_id, { position_x: x, position_y: y, rotation });
 
-          // Обновляем локальный state сразу
           setTokens(prev => prev.map(t => t.id === token_id ? { ...t, position_x: x, position_y: y, rotation: rotation ?? t.rotation } : t));
         } catch (err) {
           console.error('Failed to persist token position:', err);
         }
 
-      // Синхронизируем движение с другими участниками через LiveKit
       try {
         sendData(
           {
@@ -345,7 +336,6 @@ export function RoomProvider({ roomId, children }) {
 
   const sendChatMessage = useCallback(
     async (content, message_type = 'text') => {
-      // Сразу добавляем в локальный state (чтобы видеть мгновенно)
       const tempId = Date.now();
       setChatMessages((prev) => [
         ...prev,
@@ -359,7 +349,6 @@ export function RoomProvider({ roomId, children }) {
         },
       ]);
 
-      // Отправляем через LiveKit (для других участников)
       sendData(
         {
           type: 'chat:message',
@@ -368,14 +357,12 @@ export function RoomProvider({ roomId, children }) {
         'game:chat'
       );
 
-      // Сохраняем в БД
       try {
         const response = await roomsAPI.sendChatMessage(roomId, {
           content,
           message_type
         });
         
-        // Заменяем временный ID на реальный из БД
         setChatMessages((prev) =>
           prev.map((msg) =>
             msg.id === tempId ? { ...msg, id: response.data.id } : msg
@@ -406,7 +393,6 @@ export function RoomProvider({ roomId, children }) {
         detailedString
       }
     };
-    
     setChatMessages((prev) => [...prev, diceMessage]);
     
     sendData(
@@ -439,7 +425,19 @@ export function RoomProvider({ roomId, children }) {
   [sendData, roomId, user, setChatMessages]
 );
 
-  // Синхронизация карт
+  const sendAudioEvent = useCallback(
+    (eventType, payload) => {
+      sendData(
+        {
+          type: eventType,
+          payload,
+        },
+        'game:audio'
+      );
+    },
+    [sendData]
+  );
+
   const syncMapAdded = useCallback(
     (mapData) => {
       sendData(
@@ -466,19 +464,16 @@ export function RoomProvider({ roomId, children }) {
     [sendData]
   );
 
-  // Методы для работы со страницами
   const setActivePage = useCallback(async (pageId) => {
     try {
       await roomsAPI.setActivePage(roomId, pageId);
       setActivePageId(pageId);
 
-      // Обновляем активную карту на основе новой страницы
       const page = pages.find(p => p.id === pageId);
       if (page?.map) {
         setActiveMapId(page.map.id);
       }
 
-      // Синхронизируем с другими участниками через LiveKit
       sendData(
         {
           type: 'page:changed',
@@ -500,7 +495,6 @@ export function RoomProvider({ roomId, children }) {
       };
       setPages(prev => [...prev, pageDataWithMap]);
 
-      // Синхронизируем
       sendData(
         {
           type: 'page:created',
@@ -524,7 +518,6 @@ export function RoomProvider({ roomId, children }) {
       };
       setPages(prev => prev.map(p => p.id === pageId ? updatedPage : p));
 
-      // Синхронизируем
       sendData(
         {
           type: 'page:updated',
@@ -544,7 +537,6 @@ export function RoomProvider({ roomId, children }) {
       await roomsAPI.deletePage(roomId, pageId);
       setPages(prev => prev.filter(p => p.id !== pageId));
 
-      // Синхронизируем
       sendData(
         {
           type: 'page:deleted',
@@ -553,7 +545,6 @@ export function RoomProvider({ roomId, children }) {
         'game:page'
       );
 
-      // Если удалили активную страницу, переключаем на первую доступную
       setActivePageId(prev => {
         if (prev === pageId) {
           return pages.length > 1 ? pages.find(p => p.id !== pageId)?.id : null;
@@ -570,7 +561,6 @@ export function RoomProvider({ roomId, children }) {
     try {
       await roomsAPI.setPageBackground(roomId, pageId, imageId);
 
-      // Синхронизируем с другими участниками через LiveKit
       sendData(
         {
           type: 'page:background_changed',
@@ -579,7 +569,6 @@ export function RoomProvider({ roomId, children }) {
         'game:page'
       );
 
-      // Обновляем локально
       const pagesRes = await roomsAPI.getPages(roomId);
       const mapsRes = await roomsAPI.getMaps(roomId);
       const pagesData = pagesRes.data || [];
@@ -598,7 +587,6 @@ export function RoomProvider({ roomId, children }) {
     try {
       await roomsAPI.removePageBackground(roomId, pageId);
 
-      // Синхронизируем с другими участниками через LiveKit
       sendData(
         {
           type: 'page:background_removed',
@@ -607,7 +595,6 @@ export function RoomProvider({ roomId, children }) {
         'game:page'
       );
 
-      // Обновляем локально
       const pagesRes = await roomsAPI.getPages(roomId);
       const mapsRes = await roomsAPI.getMaps(roomId);
       const pagesData = pagesRes.data || [];
@@ -633,14 +620,12 @@ export function RoomProvider({ roomId, children }) {
     }
   }, [roomId]);
 
-  // Методы для работы с токенами
   const createToken = useCallback(async (tokenData) => {
     try {
       const response = await roomsAPI.createToken(roomId, tokenData);
       const newToken = response.data;
       setTokens(prev => [...prev, newToken]);
 
-      // Синхронизируем через LiveKit
       sendData(
         {
           type: 'token:created',
@@ -656,7 +641,6 @@ export function RoomProvider({ roomId, children }) {
     }
   }, [roomId, sendData]);
 
-  // Создание токена с загрузкой изображения
   const createTokenWithUpload = useCallback(async (tokenData, file = null, creatureData = null) => {
     try {
       const formData = new FormData();
@@ -664,7 +648,6 @@ export function RoomProvider({ roomId, children }) {
       formData.append('position_x', tokenData.position_x || 0);
       formData.append('position_y', tokenData.position_y || 0);
       
-      // Передаем page_id если есть
       if (tokenData.page_id) {
         formData.append('page_id', tokenData.page_id);
       }
@@ -672,8 +655,7 @@ export function RoomProvider({ roomId, children }) {
       if (file) {
         formData.append('file', file);
       }
-      
-      // Данные о существе (если создаем новое)
+
       if (creatureData) {
         if (creatureData.creature_name) {
           formData.append('creature_name', creatureData.creature_name);
@@ -712,7 +694,6 @@ export function RoomProvider({ roomId, children }) {
 
       setTokens(prev => [...prev, newToken]);
 
-      // Синхронизируем через LiveKit
       sendData(
         {
           type: 'token:created',
@@ -736,7 +717,6 @@ export function RoomProvider({ roomId, children }) {
         t.id === tokenId ? { ...t, ...updatedToken } : t
       ));
       
-      // Синхронизируем через LiveKit
       sendData(
         {
           type: 'token:updated',
@@ -757,7 +737,6 @@ export function RoomProvider({ roomId, children }) {
       await roomsAPI.deleteToken(roomId, tokenId);
       setTokens(prev => prev.filter(t => t.id !== tokenId));
 
-      // Синхронизируем через LiveKit
       sendData(
         {
           type: 'token:deleted',
@@ -796,7 +775,6 @@ export function RoomProvider({ roomId, children }) {
     }
   }, [roomId]);
 
-  // Загрузка бестиария
   const [bestiary, setBestiary] = useState([]);
 
   useEffect(() => {
@@ -813,7 +791,6 @@ export function RoomProvider({ roomId, children }) {
   }, []);
 
   const value = {
-    // LiveKit
     livekitUrl,
     livekitToken,
     room,
@@ -822,18 +799,15 @@ export function RoomProvider({ roomId, children }) {
     localParticipant,
     sendData,
 
-    // Комната
     roomId,
     maps,
     tokens,
     activeMapId,
     setActiveMapId,
 
-    // Чат
     chatMessages,
     setChatMessages,
 
-    // Страницы и настройки
     pages,
     activePageId,
     setActivePage,
@@ -845,14 +819,11 @@ export function RoomProvider({ roomId, children }) {
     setPageBackground,
     removePageBackground,
 
-    // Состояние
     loading,
     error,
 
-    // Бестиарий
     bestiary,
 
-    // Методы
     setMaps,
     setTokens,
     sendTokenMove,
@@ -867,6 +838,11 @@ export function RoomProvider({ roomId, children }) {
     updateTokenHp,
     updateTokenVisibility,
     isDm,
+    audioPlayerState,
+    setAudioPlayerState,
+    currentPlaylist,
+    setCurrentPlaylist,
+    sendAudioEvent,
   };
 
   return <RoomContext.Provider value={value}>{children}</RoomContext.Provider>;
