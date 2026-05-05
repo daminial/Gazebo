@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Track, createLocalTracks } from 'livekit-client';
 import { useRoom } from '../../context/RoomContext';
 import './VideoGrid.css';
+import { FaMicrophone, FaMicrophoneSlash, FaVideo, FaVideoSlash } from 'react-icons/fa';
 
 export function VideoGrid() {
   const { room, isConnected } = useRoom();
@@ -10,18 +11,37 @@ export function VideoGrid() {
   const [isCameraEnabled, setIsCameraEnabled] = useState(true);
   const [isMicEnabled, setIsMicEnabled] = useState(true);
 
-  // Запрос камеры и микрофона при подключении
   useEffect(() => {
     async function requestLocalTracks() {
       if (!room || !isConnected) return;
 
       try {
+        try {
+          const audioStream = await navigator.mediaDevices.getUserMedia({ 
+            audio: true 
+          });
+          audioStream.getTracks().forEach(track => track.stop());
+          console.log('Microphone permission granted');
+        } catch (audioErr) {
+          console.error('Microphone permission denied:');
+          setIsMicEnabled(false);
+        }
+
+        try {
+          const videoStream = await navigator.mediaDevices.getUserMedia({ 
+            video: true 
+          });
+          videoStream.getTracks().forEach(track => track.stop());
+          console.log('Camera permission granted');
+        } catch (videoErr) {
+          console.error('Camera permission denied:');
+          setIsCameraEnabled(false);
+        }
         const tracks = await createLocalTracks({
           audio: true,
           video: true,
         });
-
-        // Публикуем треки в комнате
+        
         for (const track of tracks) {
           if (track.kind === 'video') {
             await room.localParticipant.publishTrack(track);
@@ -33,7 +53,7 @@ export function VideoGrid() {
         setIsCameraEnabled(true);
         setIsMicEnabled(true);
       } catch (err) {
-        console.error('Failed to get local tracks:', err);
+        console.error('Failed to get local tracks:');
         setIsCameraEnabled(false);
         setIsMicEnabled(false);
       }
@@ -46,7 +66,6 @@ export function VideoGrid() {
     if (!room) return;
 
     const updateTracks = () => {
-      // Локальный участник - проверяем наличие публикации камеры
       let local = null;
       if (room.localParticipant) {
         const cameraPub = room.localParticipant.getTrackPublication(Track.Source.Camera);
@@ -60,7 +79,6 @@ export function VideoGrid() {
       }
       setLocalTrack(local);
 
-      // Удалённые участники
       const remotes = [];
       if (room.remoteParticipants) {
         room.remoteParticipants.forEach((participant) => {
@@ -88,7 +106,6 @@ export function VideoGrid() {
     room.on('participantConnected', updateTracks);
     room.on('participantDisconnected', updateTracks);
 
-    // События локальных треков
     room.localParticipant.on('trackPublished', updateTracks);
     room.localParticipant.on('trackUnpublished', updateTracks);
     room.localParticipant.on('trackMuted', updateTracks);
@@ -111,22 +128,49 @@ export function VideoGrid() {
     };
   }, [room]);
 
-  // Показываем контейнер всегда, когда есть комната
   if (!room) {
     return null;
   }
 
   const toggleMicrophone = async () => {
     if (room?.localParticipant) {
-      await room.localParticipant.setMicrophoneEnabled(!isMicEnabled);
-      setIsMicEnabled(!isMicEnabled);
+      try {
+        await room.localParticipant.setMicrophoneEnabled(!isMicEnabled);
+        setIsMicEnabled(!isMicEnabled);
+      } catch (err) {
+        console.error('Microphone toggle error:');
+        if (err.name === 'NotAllowedError') {
+          try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            stream.getTracks().forEach(t => t.stop());
+            await room.localParticipant.setMicrophoneEnabled(!isMicEnabled);
+            setIsMicEnabled(!isMicEnabled);
+          } catch (permErr) {
+            alert('Пожалуйста, разрешите доступ к микрофону в настройках браузера');
+          }
+        }
+      }
     }
   };
 
   const toggleCamera = async () => {
     if (room?.localParticipant) {
-      await room.localParticipant.setCameraEnabled(!isCameraEnabled);
-      setIsCameraEnabled(!isCameraEnabled);
+      try {
+        await room.localParticipant.setCameraEnabled(!isCameraEnabled);
+        setIsCameraEnabled(!isCameraEnabled);
+      } catch (err) {
+        console.error('Camera toggle error:');
+        if (err.name === 'NotAllowedError') {
+          try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            stream.getTracks().forEach(t => t.stop());
+            await room.localParticipant.setCameraEnabled(!isCameraEnabled);
+            setIsCameraEnabled(!isCameraEnabled);
+          } catch (permErr) {
+            alert('Пожалуйста, разрешите доступ к камере в настройках браузера');
+          }
+        }
+      }
     }
   };
 
@@ -146,7 +190,7 @@ export function VideoGrid() {
       ) : (
         <div className="video-tile video-tile-main video-placeholder-tile">
           <div className="placeholder-content">
-            <span>📹</span>
+            <FaVideoSlash />
             <span>Нет камеры</span>
           </div>
           {/* Контролы для локального участника */}
@@ -156,14 +200,14 @@ export function VideoGrid() {
               onClick={toggleMicrophone}
               title={isMicEnabled ? 'Выключить микрофон' : 'Включить микрофон'}
             >
-              {isMicEnabled ? '🎤' : '🔇'}
+              {isMicEnabled ? <FaMicrophone /> : <FaMicrophoneSlash />}
             </button>
             <button
               className={`control-btn ${!isCameraEnabled ? 'off' : ''}`}
               onClick={toggleCamera}
               title={isCameraEnabled ? 'Выключить камеру' : 'Включить камеру'}
             >
-              {isCameraEnabled ? '📹' : '📷'}
+              {isCameraEnabled ? <FaVideo /> : <FaVideoSlash />}
             </button>
           </div>
         </div>
@@ -181,14 +225,13 @@ export function VideoGrid() {
         </div>
       )}
     </div>
-  );
+  )
 }
 
 function VideoTile({ trackRef, isMain, isCameraEnabled, isMicEnabled, onToggleCamera, onToggleMicrophone }) {
   const { participant, publication, track } = trackRef;
   const isLocal = participant.isLocal;
 
-  // Получаем username из metadata токена (в identity лежит user_id)
   const getUsernameFromMetadata = (p) => {
     try {
       if (p?.metadata) {
@@ -207,7 +250,6 @@ function VideoTile({ trackRef, isMain, isCameraEnabled, isMicEnabled, onToggleCa
   const videoRef = React.useRef(null);
   const isVideoMuted = publication?.isMuted ?? false;
   
-  // Состояние микрофона
   const [isAudioMuted, setIsAudioMuted] = useState(false);
 
   useEffect(() => {
@@ -240,19 +282,15 @@ function VideoTile({ trackRef, isMain, isCameraEnabled, isMicEnabled, onToggleCa
     };
   }, [participant]);
 
-  const handleToggleMicrophone = async () => {
+  const handleToggleMicrophone = () => {
     if (onToggleMicrophone) {
-      await onToggleMicrophone();
-    } else if (isLocal) {
-      await participant.setMicrophoneEnabled(!isAudioMuted);
+      onToggleMicrophone();
     }
   };
 
-  const handleToggleCamera = async () => {
+  const handleToggleCamera = () => {
     if (onToggleCamera) {
-      await onToggleCamera();
-    } else if (isLocal) {
-      await participant.setCameraEnabled(isVideoMuted);
+      onToggleCamera();
     }
   };
 
@@ -262,7 +300,7 @@ function VideoTile({ trackRef, isMain, isCameraEnabled, isMicEnabled, onToggleCa
         <video ref={videoRef} autoPlay muted={isLocal} playsInline />
       ) : (
         <div className="video-off-placeholder">
-          <span>📹</span>
+          <FaVideoSlash />
         </div>
       )}
 
@@ -280,14 +318,14 @@ function VideoTile({ trackRef, isMain, isCameraEnabled, isMicEnabled, onToggleCa
               onClick={handleToggleMicrophone}
               title={isAudioMuted ? 'Включить микрофон' : 'Выключить микрофон'}
             >
-              {isAudioMuted ? '🔇' : '🎤'}
+              {isAudioMuted ? <FaMicrophoneSlash /> : <FaMicrophone />}
             </button>
             <button
               className={`control-btn ${isVideoMuted ? 'off' : ''}`}
               onClick={handleToggleCamera}
               title={isVideoMuted ? 'Включить камеру' : 'Выключить камеру'}
             >
-              {isVideoMuted ? '📷' : '📹'}
+              {isVideoMuted ? <FaVideoSlash /> : <FaVideo />}
             </button>
           </div>
         )}

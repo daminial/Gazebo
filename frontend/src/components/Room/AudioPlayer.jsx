@@ -322,17 +322,17 @@ export function AudioPlayer() {
       {/* Контролы */}
       <div className="player-controls">
         
-        <button className="control-btn" onClick={handlePrev}>
+        <button className="audio-control-btn" onClick={handlePrev}>
           <FaBackward />
         </button>
-        <button className="control-btn play-btn" onClick={isPlaying ? handlePause : handlePlay}>
+        <button className="audio-control-btn play-btn" onClick={isPlaying ? handlePause : handlePlay}>
           {isPlaying ? <FaPause /> : <FaPlay />}
         </button>
-        <button className="control-btn" onClick={handleNext}>
+        <button className="audio-control-btn" onClick={handleNext}>
           <FaForward />
         </button>
         <button 
-          className={`control-btn repeat-btn ${repeatMode !== 'none' ? 'active' : ''}`}
+          className={`audio-control-btn repeat-btn ${repeatMode !== 'none' ? 'active' : ''}`}
           onClick={handleRepeatToggle}
           title={repeatMode === 'none' ? 'Повтор выключен' : repeatMode === 'all' ? 'Повтор плейлиста' : 'Повтор одного трека'}
         >

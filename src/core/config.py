@@ -15,6 +15,8 @@ class Settings(BaseSettings):
     VERSION: str = "0.0.1"
     DEBUG: bool = False
 
+    ALLOWED_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000"
+
     S3_ENDPOINT_URL: str = "http://localhost:9000"
     S3_ACCESS_KEY: str = "minioadmin"
     S3_SECRET_KEY: str = "minioadmin"

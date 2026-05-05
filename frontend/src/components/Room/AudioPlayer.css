@@ -127,7 +127,7 @@
   gap: 16px;
 }
 
-.control-btn {
+.audio-control-btn {
   width: 44px;
   height: 44px;
   border: 2px solid #5F6C37;
@@ -142,19 +142,19 @@
   transition: all 0.2s;
 }
 
-.control-btn:hover {
+.audio-control-btn:hover {
   background: #5F6C37;
   color: #FEF3DF;
 }
 
-.play-btn {
+.audio-control-btn.play-btn {
   width: 56px;
   height: 56px;
   background: #5F6C37;
   color: #FEF3DF;
 }
 
-.play-btn:hover {
+.audio-control-btn.play-btn:hover {
   background: #4a5a2e;
 }
 

@@ -1,18 +1,14 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:17-alpine
     container_name: gazebo_postgres
-    ports:
-      - "5432:5432"
+    restart: unless-stopped
     environment:
       POSTGRES_USER: gazebo
       POSTGRES_PASSWORD: gazebo
       POSTGRES_DB: gazebo
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U gazebo"]
       interval: 5s
@@ -22,8 +18,9 @@ services:
   minio:
     image: minio/minio:latest
     container_name: gazebo_minio
+    restart: unless-stopped
     ports:
-      - "9000:9000" 
+      - "9000:9000"
       - "9001:9001"
     environment:
       MINIO_ROOT_USER: minioadmin
@@ -32,7 +29,6 @@ services:
     volumes:
       - ./minio_data:/data
     command: server /data --console-address ":9001"
-    restart: unless-stopped
 
   livekit:
     image: livekit/livekit-server:latest
@@ -42,6 +38,55 @@ services:
     volumes:
       - ./livekit-config.yaml:/app/config.yaml:ro
     command: --config /app/config.yaml
+
+  backend:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    image: gazebo_backend:latest
+    container_name: gazebo_backend
+    env_file:
+      - ../.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://gazebo:gazebo@postgres:5432/gazebo
+      S3_ENDPOINT_URL: http://minio:9000
+      S3_PUBLIC_URL: http://minio:9000
+      S3_BUCKET_NAME: gazebo
+      LIVEKIT_URL: http://192.168.0.109:7880
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+      - minio
+      - livekit
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    image: gazebo_frontend:latest
+    container_name: gazebo_frontend
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./ssl:/etc/nginx/ssl:ro
+      - ./letsencrypt:/etc/letsencrypt:ro
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  certbot:
+    image: certbot/certbot:latest
+    container_name: gazebo_certbot
+    volumes:
+      - ./letsencrypt:/etc/letsencrypt
+      - ./ssl:/etc/nginx/ssl
+      - ./certbot-webroot:/var/www/certbot
+    command: certonly --webroot --webroot-path=/var/www/certbot --email your-email@example.com --agree-tos --no-eff-email -d yourdomain.com
+    profiles:
+      - certbot
 
 volumes:
   postgres_data:

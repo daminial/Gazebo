@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useRoom } from '../../context/RoomContext';
 import './MediaControls.css';
+import { FaMicrophone, FaMicrophoneSlash, FaVideo, FaVideoSlash } from 'react-icons/fa';
 
 export function MediaControls() {
   const { room, localParticipant } = useRoom();
@@ -52,7 +53,7 @@ export function MediaControls() {
         disabled={isConnecting}
         title={isAudioEnabled ? 'Выключить микрофон' : 'Включить микрофон'}
       >
-        {isAudioEnabled ? '🎤' : '🔇'}
+        {isAudioEnabled ? <FaMicrophone /> : <FaMicrophoneSlash />}
       </button>
       <button
         className={`media-btn ${isVideoEnabled ? 'active' : ''}`}
@@ -60,7 +61,7 @@ export function MediaControls() {
         disabled={isConnecting}
         title={isVideoEnabled ? 'Выключить камеру' : 'Включить камеру'}
       >
-        {isVideoEnabled ? '📹' : '📷'}
+        {isVideoEnabled ? <FaVideo /> : <FaVideoSlash />}
       </button>
     </div>
   );
