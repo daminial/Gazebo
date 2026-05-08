@@ -99,7 +99,7 @@ class SceneObject(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     project_id = Column(Integer, ForeignKey("map_projects.id", ondelete="CASCADE"), nullable=False)
-    asset_id = Column(Integer, ForeignKey("assets.id", ondelete="CASCADE"), nullable=False)
+    asset_id = Column(Integer, ForeignKey("assets.id", ondelete="CASCADE"), nullable=True)
     x = Column(Float, nullable=False)
     y = Column(Float, nullable=False)
     width = Column(Float, nullable=True)

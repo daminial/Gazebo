@@ -68,7 +68,7 @@
 }
 
 .chat-message.own:not(.dice-message) .message-content {
-  background: #E8F0FE;
+  background: #788946;
 }
 
 .chat-message.dice-message .message-content {

@@ -57,7 +57,7 @@ export function RoomSettingsPanel() {
         </div>
       </div>
 
-      <div className="settings-section">
+      {/* <div className="settings-section">
         <h4>Аудио</h4>
         <div className="setting-row">
           <label>Громкость музыки</label>
@@ -72,7 +72,7 @@ export function RoomSettingsPanel() {
             <span className="setting-value">{formData.music_volume}%</span>
           </div>
         </div>
-      </div>
+      </div> */}
 
       <div className="settings-section">
         <h4>Доступ</h4>

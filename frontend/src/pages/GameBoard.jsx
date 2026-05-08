@@ -11,12 +11,12 @@ import { RoomSettingsPanel } from '../components/Room/RoomSettingsPanel'
 import DiceBox3D from '../components/Dice/DiceBox3D'
 import DicePanel from '../components/Dice/DicePanel'
 import { AudioPlayer } from '../components/Room/AudioPlayer'
+import { DrawingToolbar } from '../components/Room/DrawingToolbar'
 import { LuMousePointer2, LuHand } from 'react-icons/lu'
 import { PiPencilSimple, PiTextT } from 'react-icons/pi'
 import { BiCloud } from 'react-icons/bi'
 import { FaRuler, FaDiceD6, FaComment, FaImage, FaMask, FaMusic, FaStickyNote, FaCog, FaEye, FaUsers, FaBars } from 'react-icons/fa'
-import { GiSwordman, GiBattleGear } from 'react-icons/gi'
-import { MdMenu } from 'react-icons/md'
+import { GiBattleGear } from 'react-icons/gi'
 import './GameBoard.css'
 
 const isDev = process.env.NODE_ENV === 'development'
@@ -24,13 +24,18 @@ const log = (...args) => isDev && console.log(...args)
 
 function GameBoardContent() {
   const { id } = useParams()
-  const { sendChatMessage, sendDiceRoll, isConnected, tokens, pages, activePageId, roomSettings } = useRoom()
+  const { sendChatMessage, sendDiceRoll, isConnected, tokens, pages, activePageId, roomSettings, isDm } = useRoom()
   
   const [activeTab, setActiveTab] = useState('chat')
   const [chatMessage, setChatMessage] = useState('')
   const [activeTool, setActiveTool] = useState('select')
   const [showDicePanel, setShowDicePanel] = useState(false)
   const [measureMode, setMeasureMode] = useState('line')
+
+  // Состояние для рисования
+  const [drawColor, setDrawColor] = useState('#ff0000')
+  const [drawBrushSize, setDrawBrushSize] = useState(4)
+  const drawingLayerRef = useRef(null)
 
   const diceBoxRef = useRef(null)
   const [diceReady, setDiceReady] = useState(false)
@@ -47,6 +52,8 @@ function GameBoardContent() {
   const gridSize = activePage?.grid_size || roomSettings?.grid_size || 50
   const gridVisible = roomSettings?.grid_visible ?? true
 
+  const canDraw = isDm || activePage?.players_can_draw
+
   const tools = [
     { id: 'select', icon: <LuMousePointer2 size={20} />, name: 'Выделение' },
     { id: 'hand', icon: <LuHand size={20} />, name: 'Рука (перемещение)' },
@@ -55,6 +62,12 @@ function GameBoardContent() {
     { id: 'measure', icon: <FaRuler size={18} />, name: 'Измерение' },
     { id: 'fog', icon: <BiCloud size={20} />, name: 'Туман' },
   ]
+
+  const handleClearDrawing = () => {
+    if (drawingLayerRef.current) {
+      drawingLayerRef.current.clearDrawing()
+    }
+  }
 
   const handleSendMessage = (e) => {
     e.preventDefault()
@@ -65,91 +78,87 @@ function GameBoardContent() {
   }
 
   const handleDiceRoll = (notation, diceCount = 1) => {
-  if (!diceBoxRef.current || diceRolling) return;
-  
-  currentNotationRef.current = notation;
-  
-  let modifier = 0;
-  const modMatch = notation.match(/([+-]\d+)$/);
-  if (modMatch) {
-    modifier = parseInt(modMatch[1], 10);
-  }
-  currentModifierRef.current = modifier;
-  
-  setDiceRolling(true);
-  setDiceResult(null);
-  
-  try {
-    const success = diceBoxRef.current.roll(notation, diceCount);
-    if (!success) {
-      setDiceRolling(false);
-      handleFallbackRoll(notation);
-    }
-  } catch (error) {
-    console.error('Ошибка броска костей:', error);
-    setDiceRolling(false);
-    handleFallbackRoll(notation);
-  }
-};
-
-  const handleFallbackRoll = (notation) => {
-  try {
-    // Парсим нотацию
-    const diceRegex = /(\d+)d(\d+)/g;
-    let match;
-    const allRolls = [];
-    let total = 0;
+    if (!diceBoxRef.current || diceRolling) return;
     
-    while ((match = diceRegex.exec(notation)) !== null) {
-      const count = parseInt(match[1], 10);
-      const sides = parseInt(match[2], 10);
-      
-      for (let i = 0; i < count; i++) {
-        const value = Math.floor(Math.random() * sides) + 1;
-        allRolls.push({ sides, value });
-        total += value;
-      }
-    }
+    currentNotationRef.current = notation;
     
-    // Парсим модификатор
     let modifier = 0;
     const modMatch = notation.match(/([+-]\d+)$/);
     if (modMatch) {
       modifier = parseInt(modMatch[1], 10);
-      total += modifier;
     }
+    currentModifierRef.current = modifier;
     
-    const result = { 
-      total, 
-      dice: allRolls,
-      fallback: true,
-      notation,
-      modifier
-    };
+    setDiceRolling(true);
+    setDiceResult(null);
     
-    setDiceResult(result);
-    
-    // Формируем детальную строку
-    const rollValues = allRolls.map(r => r.value);
-    const rollsString = rollValues.join(' + ');
-    const modifierString = modifier !== 0 
-      ? (modifier > 0 ? ` + ${modifier}` : ` - ${Math.abs(modifier)}`)
-      : '';
-    const detailedString = modifierString 
-      ? `${rollsString}${modifierString} = ${total}`
-      : `${rollsString} = ${total}`;
-    
-    sendDiceRoll(notation, total, allRolls, modifier, detailedString);
-  } catch (error) {
-    console.error('Ошибка fallback броска:', error);
-    setDiceResult({ error: 'Ошибка броска', notation });
-  } finally {
-    setDiceRolling(false);
-  }
-};
+    try {
+      const success = diceBoxRef.current.roll(notation, diceCount);
+      if (!success) {
+        setDiceRolling(false);
+        handleFallbackRoll(notation);
+      }
+    } catch (error) {
+      console.error('Ошибка броска костей:', error);
+      setDiceRolling(false);
+      handleFallbackRoll(notation);
+    }
+  };
+
+  const handleFallbackRoll = (notation) => {
+    try {
+      const diceRegex = /(\d+)d(\d+)/g;
+      let match;
+      const allRolls = [];
+      let total = 0;
+      
+      while ((match = diceRegex.exec(notation)) !== null) {
+        const count = parseInt(match[1], 10);
+        const sides = parseInt(match[2], 10);
+        
+        for (let i = 0; i < count; i++) {
+          const value = Math.floor(Math.random() * sides) + 1;
+          allRolls.push({ sides, value });
+          total += value;
+        }
+      }
+      
+      let modifier = 0;
+      const modMatch = notation.match(/([+-]\d+)$/);
+      if (modMatch) {
+        modifier = parseInt(modMatch[1], 10);
+        total += modifier;
+      }
+      
+      const result = { 
+        total, 
+        dice: allRolls,
+        fallback: true,
+        notation,
+        modifier
+      };
+      
+      setDiceResult(result);
+      
+      const rollValues = allRolls.map(r => r.value);
+      const rollsString = rollValues.join(' + ');
+      const modifierString = modifier !== 0 
+        ? (modifier > 0 ? ` + ${modifier}` : ` - ${Math.abs(modifier)}`)
+        : '';
+      const detailedString = modifierString 
+        ? `${rollsString}${modifierString} = ${total}`
+        : `${rollsString} = ${total}`;
+      
+      sendDiceRoll(notation, total, allRolls, modifier, detailedString);
+    } catch (error) {
+      console.error('Ошибка fallback броска:', error);
+      setDiceResult({ error: 'Ошибка броска', notation });
+    } finally {
+      setDiceRolling(false);
+    }
+  };
 
   const handleDiceRollComplete = useCallback((results) => {
-    
     setDiceResult(results);
     setDiceRolling(false);
     
@@ -202,15 +211,13 @@ function GameBoardContent() {
 
   const handleDiceReady = useCallback(() => {
     setDiceReady(true);
-  }, []); 
+  }, []);
 
   const handleClearDice = () => {
     if (diceBoxRef.current) {
-      const result = diceBoxRef.current.clear();
+      diceBoxRef.current.clear();
       setDiceResult(null);
       setDiceRolling(false);
-    } else {
-      console.warn('❌ [GameBoard] diceBoxRef.current недоступен');
     }
   }
 
@@ -245,12 +252,12 @@ function GameBoardContent() {
         </div>
 
         {activeTool === 'measure' && (
-        <div className="ruler-submenu">
-          <button className={`ruler-mode-btn ${measureMode === 'line' ? 'active' : ''}`} onClick={() => setMeasureMode('line')}>📏</button>
-          <button className={`ruler-mode-btn ${measureMode === 'circle' ? 'active' : ''}`} onClick={() => setMeasureMode('circle')}>⭕</button>
-          <button className={`ruler-mode-btn ${measureMode === 'cone' ? 'active' : ''}`} onClick={() => setMeasureMode('cone')}>🔺</button>
-        </div>
-      )}
+          <div className="ruler-submenu">
+            <button className={`ruler-mode-btn ${measureMode === 'line' ? 'active' : ''}`} onClick={() => setMeasureMode('line')}>📏</button>
+            <button className={`ruler-mode-btn ${measureMode === 'circle' ? 'active' : ''}`} onClick={() => setMeasureMode('circle')}>⭕</button>
+            <button className={`ruler-mode-btn ${measureMode === 'cone' ? 'active' : ''}`} onClick={() => setMeasureMode('cone')}>🔺</button>
+          </div>
+        )}
 
         <div className="toolbar-section">
           <button className="toolbar-btn" title="Бой">
@@ -278,6 +285,18 @@ function GameBoardContent() {
         </div>
       </aside>
 
+      {/* Drawing Toolbar - появляется справа от основного toolbar */}
+      {activeTool === 'draw' && (
+        <DrawingToolbar
+          color={drawColor}
+          onColorChange={setDrawColor}
+          brushSize={drawBrushSize}
+          onBrushSizeChange={setDrawBrushSize}
+          onClear={handleClearDrawing}
+          canDraw={canDraw}
+        />
+      )}
+
       {/* Main Canvas Area */}
       <main className="canvas-area">
         <div className="map-container" style={{ background: backgroundColor }}>
@@ -288,6 +307,9 @@ function GameBoardContent() {
             gridSize={gridSize}
             gridVisible={gridVisible}
             measureMode={activeTool === 'measure' ? measureMode : null}
+            drawColor={drawColor}
+            drawBrushSize={drawBrushSize}
+            drawingLayerRef={drawingLayerRef}
           />
           <PagesDropdown />
         </div>
@@ -355,7 +377,9 @@ function GameBoardContent() {
           )}
           {activeTab === 'images' && <ImagesPanel />}
           {activeTab === 'tokens' && <TokensPanel />}
-          {activeTab === 'music' && <AudioPlayer />}
+          <div style={{ display: activeTab === 'music' ? 'block' : 'none' }}>
+            <AudioPlayer />
+          </div>
           {activeTab === 'notes' && (
             <div className="tab-placeholder">
               <h3>Заметки</h3>

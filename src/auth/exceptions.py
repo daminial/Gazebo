@@ -52,3 +52,11 @@ class InactiveUserException(AuthException):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Учётная запись отключена"
         )
+class UsernameValidationException(AuthException):
+    """Исключение для ошибок валидации username"""
+    def __init__(self, detail: str = "Имя пользователя должно быть не менее 3 символов"):
+        super().__init__(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=detail
+        )
+        

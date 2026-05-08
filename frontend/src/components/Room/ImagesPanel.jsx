@@ -13,23 +13,6 @@ export function ImagesPanel() {
   const [mapName, setMapName] = useState('')
   const [mapDescription, setMapDescription] = useState('')
 
-  // Обработчик начала перетаскивания изображения
-  const handleDragStart = (e, map) => {
-    const imageUrl = map.image_url?.startsWith('http')
-      ? map.image_url
-      : (map.image_url?.startsWith('/api')
-          ? map.image_url
-          : `/api${map.image_url}`)
-    
-    e.dataTransfer.setData('application/json', JSON.stringify({
-      type: 'prop',
-      imageId: map.image_id || map.template_image_id,
-      imageUrl: imageUrl,
-      name: map.name_in_room || map.template_name || 'Объект'
-    }))
-    e.dataTransfer.effectAllowed = 'copy'
-  }
-
   // Загрузка шаблонов при открытии модалки
   useEffect(() => {
     if (showTemplatesModal) {
@@ -60,14 +43,12 @@ export function ImagesPanel() {
 
     setUploading(true)
     try {
-      // Отправляем файл напрямую в комнату (без создания шаблона)
       const formData = new FormData()
       formData.append('file', selectedFile)
       formData.append('name_in_room', mapName)
 
       const { data: mapData } = await roomsAPI.addMap(roomId, null, mapName, selectedFile)
 
-      // Получаем image_url из ответа
       const imageUrl = mapData.image_url?.startsWith('http')
         ? mapData.image_url
         : (mapData.image_url?.startsWith('/api')
@@ -80,7 +61,6 @@ export function ImagesPanel() {
       }
       setMaps(prev => [...prev, mapWithImage])
 
-      // Синхронизируем с другими участниками
       syncMapAdded(mapWithImage)
 
       setShowUploadModal(false)
@@ -111,7 +91,6 @@ export function ImagesPanel() {
       }
       setMaps(prev => [...prev, mapWithImage])
 
-      // Синхронизируем
       syncMapAdded(mapWithImage)
 
       setShowTemplatesModal(false)
@@ -130,7 +109,6 @@ export function ImagesPanel() {
       await roomsAPI.deleteMap(roomId, mapId)
       setMaps(prev => prev.filter(m => m.id !== mapId))
 
-      // Синхронизируем
       syncMapDeleted(mapId)
     } catch (err) {
       console.error('Failed to delete map:', err)
@@ -170,15 +148,7 @@ export function ImagesPanel() {
             {maps.map(map => (
               <div
                 key={map.id}
-                className={`map-card`}
-                draggable
-                onDragStart={(e) => handleDragStart(e, map)}
-                onDragEnd={(e) => {
-                  e.currentTarget.style.opacity = '1'
-                }}
-                onDrag={(e) => {
-                  e.currentTarget.style.opacity = '0.5'
-                }}
+                className="map-card"
               >
                 <div className="map-card-image">
                   {map.image_url ? (
@@ -189,7 +159,6 @@ export function ImagesPanel() {
                 </div>
                 <div className="map-card-info">
                   <span className="map-title">{map.name_in_room || map.template_name || 'Карта'}</span>
-                  <span className="map-drag-hint">⋮⋮ перетащите</span>
                 </div>
                 <button
                   className="btn-delete-map"
@@ -281,10 +250,10 @@ export function ImagesPanel() {
       {showTemplatesModal && (
         <div className="modal-overlay" onClick={() => setShowTemplatesModal(false)}>
           <div className="map-templates-modal" onClick={e => e.stopPropagation()}>
-            <h3>Выбрать из моих карт</h3>
+            <h3>Выбрать из библиотеки</h3>
 
             {templates.length === 0 ? (
-              <p className="no-templates">У вас пока нет загруженных карт</p>
+              <p className="no-templates">Пока нет загруженных карт</p>
             ) : (
               <div className="templates-grid">
                 {templates.map(template => (

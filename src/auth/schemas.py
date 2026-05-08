@@ -10,20 +10,22 @@ class UserBase(BaseModel):
     """Базовая модель пользователя"""
 
     email: EmailStr
-    username: str = Field(..., min_length=3, max_length=50)
+    username: str = Field(...)
     full_name: Optional[str] = None
 
 
 class UserCreate(UserBase):
-    """Модель для проверки при сощдании пользователя"""
-    password: str = Field(..., min_length=8)
+    """Модель для проверки при создании пользователя"""
+    password: str  # Без min_length
 
     @field_validator('password')
     def password_strength(cls, v):
+        if len(v) < 8:
+            raise ValueError('Пароль должен быть не менее 8 символов')
         if not any(c.isupper() for c in v):
-            raise ValueError('Password must contain at least one uppercase letter')
+            raise ValueError('Пароль должен содержать хотя бы одну большую букву')
         if not any(c.isdigit() for c in v):
-            raise ValueError('Password must contain at least one digit')
+            raise ValueError('Пароль должен иметь хотя бы одну цифру')
         return v
 
 

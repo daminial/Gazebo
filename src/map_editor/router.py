@@ -203,7 +203,6 @@ async def save_project_to_template(
         is_public=is_public.lower() == 'true'
     )
     
-    # Убери try-except, пусть ошибка всплывёт
     return await editor_service.save_project_to_template(
         project_id=project_id,
         user_id=current_user.id,

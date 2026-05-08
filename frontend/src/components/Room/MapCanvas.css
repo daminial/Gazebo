@@ -98,8 +98,8 @@
 .map-context-menu {
   position: fixed;
   z-index: 99999;
-  background: #1a1a2e;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: #FEF3DF;
+  border: 2px solid #273619ca;
   border-radius: 8px;
   padding: 6px 0;
   min-width: 220px;
@@ -124,7 +124,7 @@
   padding: 10px 16px;
   border: none;
   background: transparent;
-  color: #FDF8E8;
+  color: #000000;
   font-size: 14px;
   text-align: left;
   cursor: pointer;
@@ -152,7 +152,7 @@
 .bg-image-picker {
   position: fixed;
   z-index: 99999;
-  background: #1a1a2e;
+  background: #FEF3DF;
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 12px;
   overflow: hidden;
@@ -167,7 +167,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px;
-  background: rgba(90, 107, 58, 0.3);
+  background: #5F6C37;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   color: #FDF8E8;
   font-weight: 600;
@@ -209,12 +209,12 @@
   border-radius: 8px;
   overflow: hidden;
   cursor: pointer;
-  border: 2px solid rgba(255, 255, 255, 0.1);
+  border: 2px solid #5f6c37b8;
   transition: all 0.2s;
 }
 
 .bg-picker-item:hover {
-  border-color: #A8C46E;
+  border-color: #5F6C37;
   transform: scale(1.02);
 }
 
@@ -228,7 +228,7 @@
 .bg-picker-item-name {
   display: block;
   padding: 6px 8px;
-  color: #FDF8E8;
+  color: #000000;
   font-size: 12px;
   white-space: nowrap;
   overflow: hidden;

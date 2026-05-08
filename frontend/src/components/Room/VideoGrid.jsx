@@ -6,7 +6,7 @@ import { FaMicrophone, FaMicrophoneSlash, FaVideo, FaVideoSlash } from 'react-ic
 
 export function VideoGrid() {
   const { room, isConnected } = useRoom();
-  const [localTrack, setLocalTrack] = useState(null);
+  const [localVideoTrack, setLocalVideoTrack] = useState(null);
   const [remoteTracks, setRemoteTracks] = useState([]);
   const [isCameraEnabled, setIsCameraEnabled] = useState(true);
   const [isMicEnabled, setIsMicEnabled] = useState(true);
@@ -77,7 +77,7 @@ export function VideoGrid() {
           };
         }
       }
-      setLocalTrack(local);
+      setLocalVideoTrack(local);
 
       const remotes = [];
       if (room.remoteParticipants) {
@@ -88,6 +88,15 @@ export function VideoGrid() {
               participant,
               publication: cameraPub,
               track: cameraPub.track,
+            });
+          }
+
+          const micPub = participant.getTrackPublication(Track.Source.Microphone);
+          if (micPub && micPub.track) {
+            remotes.push({
+              participant,
+              publication: micPub,
+              track: micPub.track,
             });
           }
         });
@@ -177,10 +186,10 @@ export function VideoGrid() {
   return (
     <div className="video-grid">
       {/* Локальное видео */}
-      {localTrack ? (
+      {localVideoTrack ? (
         <VideoTile
-          key={localTrack.participant.sid + localTrack.track.sid}
-          trackRef={localTrack}
+          key={localVideoTrack.participant.sid + localVideoTrack.track.sid}
+          trackRef={localVideoTrack}
           isMain
           isCameraEnabled={isCameraEnabled}
           isMicEnabled={isMicEnabled}
@@ -248,26 +257,35 @@ function VideoTile({ trackRef, isMain, isCameraEnabled, isMicEnabled, onToggleCa
 
   const username = isLocal ? 'Вы' : getUsernameFromMetadata(participant);
   const videoRef = React.useRef(null);
+  const audioRef = React.useRef(null);
+  const isVideoTrack = track?.kind === 'video';
+  const isAudioTrack = track?.kind === 'audio';
   const isVideoMuted = publication?.isMuted ?? false;
   
   const [isAudioMuted, setIsAudioMuted] = useState(false);
 
   useEffect(() => {
-    if (videoRef.current && track && !isVideoMuted) {
-      track.attach(videoRef.current);
+    if (track) {
+      if (isVideoTrack && videoRef.current && !isVideoMuted) {
+        track.attach(videoRef.current);
+      }
+      if (isAudioTrack && audioRef.current) {
+        track.attach(audioRef.current);
+      }
     }
+
     return () => {
       if (track) {
         track.detach();
       }
     };
-  }, [track, isVideoMuted]);
+  }, [track, isVideoMuted, isVideoTrack, isAudioTrack]);
 
   useEffect(() => {
     if (!participant) return;
 
     const updateAudioStatus = () => {
-      const audioPub = participant.getTrackPublication('microphone');
+      const audioPub = participant.getTrackPublication(Track.Source.Microphone);
       setIsAudioMuted(audioPub?.isMuted ?? false);
     };
 
@@ -296,12 +314,16 @@ function VideoTile({ trackRef, isMain, isCameraEnabled, isMicEnabled, onToggleCa
 
   return (
     <div className={`video-tile ${isMain ? 'video-tile-main' : ''}`}>
-      {!isVideoMuted ? (
-        <video ref={videoRef} autoPlay muted={isLocal} playsInline />
+      {isVideoTrack ? (
+        !isVideoMuted ? (
+          <video ref={videoRef} autoPlay muted={isLocal} playsInline />
+        ) : (
+          <div className="video-off-placeholder">
+            <FaVideoSlash />
+          </div>
+        )
       ) : (
-        <div className="video-off-placeholder">
-          <FaVideoSlash />
-        </div>
+        <audio ref={audioRef} autoPlay muted={isLocal} />
       )}
 
       {/* Overlay с именем и контролами */}

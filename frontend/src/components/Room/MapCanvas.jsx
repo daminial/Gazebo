@@ -8,7 +8,17 @@ const MIN_ZOOM = 0.1
 const MAX_ZOOM = 5
 const ZOOM_STEP = 0.1
 
-export function MapCanvas({ activeTool = 'select', canvasWidth, canvasHeight, gridSize, gridVisible, measureMode = null }) {
+export function MapCanvas({ 
+  activeTool = 'select', 
+  canvasWidth, 
+  canvasHeight, 
+  gridSize, 
+  gridVisible, 
+  measureMode = null,
+  drawColor,
+  drawBrushSize,
+  drawingLayerRef
+}) {
   const {
     maps, activeMapId, pages, activePageId,
     setPageBackground, removePageBackground,
@@ -571,6 +581,7 @@ export function MapCanvas({ activeTool = 'select', canvasWidth, canvasHeight, gr
 
       {renderContent()}
       <DrawingLayer
+        drawingLayerRef={drawingLayerRef}
         activeTool={activeTool}
         canvasWidth={canvasWidth}
         canvasHeight={canvasHeight}
@@ -578,91 +589,14 @@ export function MapCanvas({ activeTool = 'select', canvasWidth, canvasHeight, gr
         zoom={zoom}
         panX={panX}
         panY={panY}
+        color={drawColor}
+        brushSize={drawBrushSize}
       />
     </div>
   )
 
-  if (!displayImageUrl) {
-    return (
-      <div className={"map-viewport" + (isDragOver ? ' drag-over' : '')} {...commonProps}>
-        {transformLayer}
-
-        <div className="zoom-controls">
-          <button className="zoom-btn" onClick={handleZoomIn}>+</button>
-          <span className="zoom-level">{Math.round(zoom * 100)}%</span>
-          <button className="zoom-btn" onClick={handleZoomOut}>−</button>
-          <button className="zoom-btn" onClick={handleResetView}>⌂</button>
-        </div>
-
-        {renderRuler()}
-
-        {measureResult && measuring && measureStart && measureEnd && (
-          (() => {
-            const midX = (measureStart.x + measureEnd.x) / 2 * zoom + panX
-            const midY = (measureStart.y + measureEnd.y) / 2 * zoom + panY - 30
-            const fontSize = Math.max(10, 12 / zoom)
-            return (
-              <div style={{ 
-                position: 'absolute', 
-                left: midX, 
-                top: midY, 
-                transform: 'translate(-50%, -50%)', 
-                background: 'rgba(0,0,0,0.8)', 
-                color: 'white', 
-                padding: '4px 8px', 
-                borderRadius: '4px', 
-                fontSize: `${fontSize}px`, 
-                whiteSpace: 'nowrap', 
-                pointerEvents: 'none', 
-                zIndex: 1002,
-                fontFamily: 'monospace',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
-              }}>
-                📏 {measureResult.cells} клеток ({measureResult.feet} футов)
-              </div>
-            )
-          })()
-        )}
-
-        {showContextMenu && (
-          <>
-            <div className="context-menu-backdrop" onClick={handleCloseMenu} />
-            <div className="map-context-menu" style={{ left: showContextMenu.x, top: showContextMenu.y }}>
-              <button className="menu-item" onClick={() => setShowBgPicker(true)}>
-                Выбрать фоновое изображение
-              </button>
-            </div>
-          </>
-        )}
-
-        {showBgPicker && (
-          <div className="bg-image-picker" ref={pickerRef} style={{ left: showContextMenu.x, top: showContextMenu.y }}>
-            <div className="bg-picker-header">
-              <span>Фоновое изображение</span>
-              <button className="bg-picker-close" onClick={() => setShowBgPicker(false)}>✕</button>
-            </div>
-            {roomImages.length === 0 ? (
-              <div className="bg-picker-empty">Нет изображений в комнате</div>
-            ) : (
-              <div className="bg-picker-grid">
-                {roomImages.map((img, idx) => (
-                  <div key={idx} className="bg-picker-item" onClick={() => handleSetBackground(img.id, img.url)}>
-                    <img src={img.url} alt={img.name} />
-                    <span className="bg-picker-item-name">{img.name}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    )
-  }
-
-  return (
-    <div className={"map-viewport" + (isDragOver ? ' drag-over' : '')} {...commonProps}>
-      {transformLayer}
-
+  const renderCommonElements = () => (
+    <>
       <div className="zoom-controls">
         <button className="zoom-btn" onClick={handleZoomIn}>+</button>
         <span className="zoom-level">{Math.round(zoom * 100)}%</span>
@@ -736,6 +670,13 @@ export function MapCanvas({ activeTool = 'select', canvasWidth, canvasHeight, gr
           )}
         </div>
       )}
+    </>
+  )
+
+  return (
+    <div className={"map-viewport" + (isDragOver ? ' drag-over' : '')} {...commonProps}>
+      {transformLayer}
+      {renderCommonElements()}
     </div>
   )
 }

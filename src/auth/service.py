@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
 from uuid import UUID
 
-from src.auth.exceptions import EmailAlreadyExistsException, UsernameAlreadyExistsException, InvalidCredentialsException
+from src.auth.exceptions import EmailAlreadyExistsException, UsernameAlreadyExistsException, InvalidCredentialsException, UsernameValidationException
 from src.auth.models import User
 from src.auth.schemas import UserCreate, UserUpdate, Token, LoginRequest
 from src.auth.security import (
@@ -42,6 +42,12 @@ class AuthService:
 
     async def create_user(self, user_data: UserCreate) -> User:
         """Создание нового пользователя"""
+        
+        if len(user_data.username) < 3:
+            raise UsernameValidationException("Имя пользователя должно быть не менее 3 символов")
+        
+        if len(user_data.username) > 50:
+            raise UsernameValidationException("Имя пользователя не должно превышать 50 символов")
 
         email_exists = await self.db.execute(
             select(User).filter_by(email=user_data.email)

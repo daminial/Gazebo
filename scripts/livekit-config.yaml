@@ -4,7 +4,7 @@ keys:
 rtc:
   tcp_port: 7881
   udp_port: 7882
-  node_ip: 192.168.0.109
+  node_ip: 192.168.1.166
   port_range_start: 50000
   port_range_end: 60000
   use_external_ip: true

@@ -40,13 +40,6 @@
   background: #ffffff;
   color: #5F6C37;
 }
-/* 
-.tokens-action-btn {
-}
-
-.tokens-action-btn:hover {
-
-} */
 
 .images-list {
   flex: 1;
@@ -82,22 +75,9 @@
   padding: 0;
 }
 
-.map-card[draggable="true"] {
-  cursor: grab;
-}
-
-.map-card[draggable="true"]:active {
-  cursor: grabbing;
-}
-
 .map-card:hover {
   border-color: #5A6B3A;
   transform: scale(1.02);
-}
-
-.map-card.dragging {
-  opacity: 0.5;
-  border-color: #5A6B3A;
 }
 
 .map-card.active {
@@ -123,7 +103,7 @@
   align-items: center;
   justify-content: center;
   font-size: 32px;
-  background: #2a2a3e;
+  background: #FDF8E8;
 }
 
 .map-card-info {
@@ -142,18 +122,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   flex: 1;
-}
-
-.map-drag-hint {
-  font-size: 10px;
-  color: rgba(253, 248, 232, 0.4);
-  white-space: nowrap;
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-
-.map-card:hover .map-drag-hint {
-  opacity: 1;
 }
 
 .active-badge {
@@ -214,14 +182,14 @@
 
 .map-upload-modal,
 .map-templates-modal {
-  background: #2a2a3e;
+  background: #FDF8E8;
   padding: 25px;
   border-radius: 12px;
   min-width: 400px;
   max-width: 500px;
   max-height: 80vh;
   overflow-y: auto;
-  color: #FDF8E8;
+  color: #000000;
 }
 
 .map-upload-modal h3,
@@ -385,7 +353,7 @@
   align-items: center;
   justify-content: center;
   font-size: 32px;
-  background: #2a2a3e;
+  background: #FDF8E8;
 }
 
 .template-name {

@@ -6,7 +6,7 @@ import { TbRepeat, TbRepeatOnce, TbRepeatOff } from 'react-icons/tb';
 import './AudioPlayer.css';
 
 export function AudioPlayer() {
-  const { roomId } = useRoom();
+  const { roomId, isDm, isConnected, sendAudioEvent } = useRoom();
   const audioRef = useRef(null);
   
   const [isPlaying, setIsPlaying] = useState(false);
@@ -52,37 +52,6 @@ export function AudioPlayer() {
   }, [showLibrary, searchQuery]);
 
   useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    const onTimeUpdate = () => setCurrentTime(audio.currentTime);
-    const onLoadedMetadata = () => setDuration(audio.duration);
-    const onEnded = () => {
-      setIsPlaying(false);
-      setCurrentTime(0);
-      
-      if (repeatMode === 'one') {
-        if (audioRef.current) {
-          audioRef.current.currentTime = 0;
-          audioRef.current.play().then(() => setIsPlaying(true));
-        }
-      } else {
-        handleNext();
-      }
-    };
-
-    audio.addEventListener('timeupdate', onTimeUpdate);
-    audio.addEventListener('loadedmetadata', onLoadedMetadata);
-    audio.addEventListener('ended', onEnded);
-
-    return () => {
-      audio.removeEventListener('timeupdate', onTimeUpdate);
-      audio.removeEventListener('loadedmetadata', onLoadedMetadata);
-      audio.removeEventListener('ended', onEnded);
-    };
-  }, [currentTrack, repeatMode, roomTracks]);
-
-  useEffect(() => {
     if (audioRef.current) {
       audioRef.current.volume = volume / 100;
     }
@@ -97,6 +66,9 @@ export function AudioPlayer() {
     try {
       await audioRef.current.play();
       setIsPlaying(true);
+      if (isDm && isConnected) {
+        sendAudioEvent('audio:player_command', { action: 'play' });
+      }
     } catch (err) {
       console.error('Play failed:', err);
     }
@@ -106,6 +78,9 @@ export function AudioPlayer() {
     if (audioRef.current) {
       audioRef.current.pause();
       setIsPlaying(false);
+      if (isDm && isConnected) {
+        sendAudioEvent('audio:player_command', { action: 'pause' });
+      }
     }
   };
 
@@ -115,6 +90,9 @@ export function AudioPlayer() {
       audioRef.current.currentTime = 0;
       setIsPlaying(false);
       setCurrentTime(0);
+      if (isDm && isConnected) {
+        sendAudioEvent('audio:player_command', { action: 'stop' });
+      }
     }
   };
 
@@ -137,16 +115,27 @@ export function AudioPlayer() {
       audioRef.current.src = url;
       audioRef.current.load();
     }
+
+    if (isDm && isConnected) {
+      sendAudioEvent('audio:player_command', { action: 'set_track', track_id: trackData.id });
+    }
   };
 
   const handleVolumeChange = (value) => {
-    setVolumeState(Number(value));
+    const normalizedValue = Number(value);
+    setVolumeState(normalizedValue);
+    if (isDm && isConnected) {
+      sendAudioEvent('audio:player_command', { action: 'volume', volume: normalizedValue });
+    }
   };
 
   const handleSeek = (value) => {
     if (audioRef.current) {
       audioRef.current.currentTime = Number(value);
       setCurrentTime(Number(value));
+      if (isDm && isConnected) {
+        sendAudioEvent('audio:player_command', { action: 'seek', seek_position_ms: Number(value) * 1000 });
+      }
     }
   };
 
@@ -174,7 +163,42 @@ export function AudioPlayer() {
         audioRef.current.play().then(() => setIsPlaying(true)).catch(console.error);
       }
     }, 100);
+
+    if (isDm && isConnected) {
+      sendAudioEvent('audio:player_command', { action: 'next' });
+    }
   };
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const onTimeUpdate = () => setCurrentTime(audio.currentTime);
+    const onLoadedMetadata = () => setDuration(audio.duration);
+    const onEnded = () => {
+      setIsPlaying(false);
+      setCurrentTime(0);
+
+      if (repeatMode === 'one') {
+        if (audioRef.current) {
+          audioRef.current.currentTime = 0;
+          audioRef.current.play().then(() => setIsPlaying(true));
+        }
+      } else {
+        handleNext();
+      }
+    };
+
+    audio.addEventListener('timeupdate', onTimeUpdate);
+    audio.addEventListener('loadedmetadata', onLoadedMetadata);
+    audio.addEventListener('ended', onEnded);
+
+    return () => {
+      audio.removeEventListener('timeupdate', onTimeUpdate);
+      audio.removeEventListener('loadedmetadata', onLoadedMetadata);
+      audio.removeEventListener('ended', onEnded);
+    };
+  }, [currentTrack, repeatMode, roomTracks]);
 
   const handlePrev = () => {
     if (roomTracks.length === 0) return;
@@ -205,7 +229,57 @@ export function AudioPlayer() {
         audioRef.current.play().then(() => setIsPlaying(true)).catch(console.error);
       }
     }, 100);
+
+    if (isDm && isConnected) {
+      sendAudioEvent('audio:player_command', { action: 'prev' });
+    }
   };
+
+  useEffect(() => {
+    const handleCommand = (event) => {
+      const { action, track_id, volume: commandVolume, seek_position_ms } = event.detail || {};
+
+      switch (action) {
+        case 'play':
+          handlePlay();
+          break;
+        case 'pause':
+          handlePause();
+          break;
+        case 'stop':
+          handleStop();
+          break;
+        case 'next':
+          handleNext();
+          break;
+        case 'prev':
+          handlePrev();
+          break;
+        case 'set_track': {
+          const track = roomTracks.find(t => String(t.audio_file_id || t.audio?.id) === String(track_id));
+          if (track) {
+            handleSetTrack(track);
+          }
+          break;
+        }
+        case 'volume':
+          if (typeof commandVolume === 'number') {
+            handleVolumeChange(commandVolume);
+          }
+          break;
+        case 'seek':
+          if (typeof seek_position_ms === 'number') {
+            handleSeek(seek_position_ms / 1000);
+          }
+          break;
+        default:
+          break;
+      }
+    };
+
+    window.addEventListener('audio-player-command', handleCommand);
+    return () => window.removeEventListener('audio-player-command', handleCommand);
+  }, [handlePlay, handlePause, handleStop, handleNext, handlePrev, handleSetTrack, handleVolumeChange, handleSeek, roomTracks]);
 
   const handleRepeatToggle = () => {
     setRepeatMode(prev => {
