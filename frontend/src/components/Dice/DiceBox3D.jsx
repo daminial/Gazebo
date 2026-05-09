@@ -15,11 +15,16 @@ const DiceBox3D = forwardRef(({
 }, ref) => {
   const containerRef = useRef(null);
   const diceBoxRef = useRef(null);
+  const onRollCompleteRef = useRef(onRollComplete);
   const [isReady, setIsReady] = useState(false);
   const [isRolling, setIsRolling] = useState(false);
   const [error, setError] = useState(null);
   const [currentResults, setCurrentResults] = useState(null);
   
+  useEffect(() => {
+    onRollCompleteRef.current = onRollComplete;
+  }, [onRollComplete]);
+
   const audioContextRef = useRef(null);
   const audioUnlockedRef = useRef(false);
   const soundIntervalRef = useRef(null);
@@ -200,7 +205,6 @@ const DiceBox3D = forwardRef(({
 
         await box.init();
         
-        // Переопределяем метод roll
         const originalRoll = box.roll;
         box.roll = function(notation, diceCount = 1, ...args) {
           setIsRolling(true);
@@ -264,8 +268,11 @@ const DiceBox3D = forwardRef(({
             };
 
             setCurrentResults(formattedResults);
-            
-            if (onRollComplete) onRollComplete(formattedResults);
+
+            console.log('🎯 DiceBox вызывает onRollComplete через ref');
+            if (onRollCompleteRef.current) {
+              onRollCompleteRef.current(formattedResults);
+            }
           } catch (err) {
             console.error('Ошибка в onRollComplete:', err);
             setIsRolling(false);

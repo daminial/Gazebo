@@ -3,6 +3,7 @@ import { useRoom } from '../../context/RoomContext'
 import { Token } from './Token'
 import './MapCanvas.css'
 import { DrawingLayer } from './DrawingLayer'
+import { useRuler } from '../../hooks/useRuler'
 
 const MIN_ZOOM = 0.1
 const MAX_ZOOM = 5
@@ -23,7 +24,7 @@ export function MapCanvas({
     maps, activeMapId, pages, activePageId,
     setPageBackground, removePageBackground,
     tokens, setTokens, sendTokenMove, roomId, createToken,
-    isDm, user, deleteToken,
+    isDm, user, deleteToken, sendRulerData,
   } = useRoom()
   const [showContextMenu, setShowContextMenu] = useState(null)
   const [showBgPicker, setShowBgPicker] = useState(false)
@@ -41,20 +42,70 @@ export function MapCanvas({
   const [isSelecting, setIsSelecting] = useState(false)
   const [selectionStart, setSelectionStart] = useState(null)
 
-  const [measuring, setMeasuring] = useState(false)
-  const [measureStart, setMeasureStart] = useState(null)
-  const [measureEnd, setMeasureEnd] = useState(null)
-  const [measureResult, setMeasureResult] = useState(null)
-  const [renderKey, setRenderKey] = useState(0)
-  
-  const animationFrameRef = useRef(null)
-  const measureStartRef = useRef(null)
+  const [remoteRulers, setRemoteRulers] = useState({});
+
+  const canvasRef = useRef(null)
+
+  const ruler = useRuler({
+    gridSize,
+    feetPerCell: 5,
+    enabled: activeTool === 'measure',
+    onMeasureUpdate: (data) => {
+      if (data) {
+        sendRulerData('measuring', {
+          ...data,
+          participantId: user?.id
+        });
+      } else {
+        sendRulerData('measuring', {
+          participantId: user?.id,
+          start: null
+        });
+      }
+    }
+  })
+  useEffect(() => {
+  if (measureMode) {
+    ruler.setMeasureMode(measureMode);
+  }
+}, [measureMode, ruler.setMeasureMode]);
+
+  const {
+    measuring,
+    measureMode: currentMeasureMode,
+    measureStart,
+    measureEnd,
+    measureResult,
+    renderKey,
+    startMeasure,
+    scheduleUpdate,
+    endMeasure,
+  } = ruler
 
   useEffect(() => {
-    if (measuring && measureStart && measureEnd) {
-      setRenderKey(prev => prev + 1)
-    }
-  }, [zoom, panX, panY, measuring, measureStart, measureEnd])
+    const handleRulerUpdate = (e) => {
+      const { mode, start, end, result, participantId } = e.detail;
+      
+      console.log('📏 Получена чужая линейка:', { mode, start, end, result, participantId });
+      
+      if (participantId === user?.id) return;
+      
+      setRemoteRulers(prev => {
+        if (!start) {
+          const next = { ...prev };
+          delete next[participantId];
+          return next;
+        }
+        return {
+          ...prev,
+          [participantId]: { mode, start, end, result }
+        };
+      });
+    };
+
+    window.addEventListener('ruler-update', handleRulerUpdate);
+    return () => window.removeEventListener('ruler-update', handleRulerUpdate);
+  }, [user?.id]);
 
   const activePage = pages.find(p => p.id === activePageId)
   let activeMap = null
@@ -73,59 +124,6 @@ export function MapCanvas({
     .filter(m => m.image_url)
     .map(m => ({ id: m.image_id || m.template_image_id, url: m.image_url, name: m.name_in_room || 'Карта' }))
     .filter((img, i, arr) => arr.findIndex(x => x.url === img.url) === i)
-
-  const canvasRef = useRef(null)
-
-  const getDistance = useCallback((x1, y1, x2, y2) => {
-    const dx = Math.abs(x2 - x1)
-    const dy = Math.abs(y2 - y1)
-    const cells = Math.sqrt(dx * dx + dy * dy) / gridSize
-    const feet = cells * 5
-    return { cells: Math.round(cells * 10) / 10, feet: Math.round(feet * 10) / 10 }
-  }, [gridSize])
-
-  const startMeasure = useCallback((x, y) => {
-    setMeasuring(true)
-    setMeasureStart({ x, y })
-    setMeasureEnd({ x, y })
-    setMeasureResult(null)
-    measureStartRef.current = { x, y }
-  }, [])
-
-  const updateMeasure = useCallback((x, y) => {
-    if (!measuring || !measureStartRef.current) return
-    setMeasureEnd({ x, y })
-    const dist = getDistance(measureStartRef.current.x, measureStartRef.current.y, x, y)
-    setMeasureResult(dist)
-    setRenderKey(prev => prev + 1)
-  }, [measuring, getDistance])
-
-  const scheduleUpdate = useCallback((x, y) => {
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current)
-    }
-    animationFrameRef.current = requestAnimationFrame(() => {
-      updateMeasure(x, y)
-    })
-  }, [updateMeasure])
-
-  const endMeasure = useCallback(() => {
-    setMeasuring(false)
-    measureStartRef.current = null
-    setTimeout(() => {
-      setMeasureStart(null)
-      setMeasureEnd(null)
-      setMeasureResult(null)
-    }, 2000)
-  }, [])
-
-  useEffect(() => {
-    return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current)
-      }
-    }
-  }, [])
 
   const getCanvasCoordinates = useCallback((e) => {
     const rect = canvasRef.current.getBoundingClientRect()
@@ -217,11 +215,11 @@ export function MapCanvas({
         width: Math.abs(current.x - selectionStart.x),
         height: Math.abs(current.y - selectionStart.y)
       })
-    } else if (activeTool === 'measure' && measuring && measureMode && measureStartRef.current) {
+    } else if (activeTool === 'measure' && measuring && measureMode && measureStart) {
       const coords = getCanvasCoordinates(e)
       scheduleUpdate(coords.x, coords.y)
     }
-  }, [isPanning, isSelecting, selectionStart, getCanvasCoordinates, activeTool, measuring, measureMode, scheduleUpdate])
+  }, [isPanning, isSelecting, selectionStart, getCanvasCoordinates, activeTool, measuring, measureMode, measureStart, scheduleUpdate])
 
   const handleMouseUp = useCallback(() => {
     if (isPanning) {
@@ -411,11 +409,28 @@ export function MapCanvas({
 
     const strokeW = Math.max(2, 3 / zoom)
     const circleR = Math.max(4, 5 / zoom)
+    const dashArray = `${5/zoom},${5/zoom}`
 
     if (measureMode === 'line') {
       return (
-        <svg key={renderKey} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 1001 }}>
-          <line x1={measureStart.x} y1={measureStart.y} x2={measureEnd.x} y2={measureEnd.y} stroke="#ff4444" strokeWidth={strokeW} strokeDasharray="5,5" />
+        <svg 
+          key={renderKey}
+          style={{ 
+            position: 'absolute', 
+            top: 0, 
+            left: 0, 
+            width: `${canvasWidth}px`,
+            height: `${canvasHeight}px`,
+            pointerEvents: 'none', 
+            zIndex: 1001,
+            overflow: 'visible'
+          }}
+        >
+          <line 
+            x1={measureStart.x} y1={measureStart.y} 
+            x2={measureEnd.x} y2={measureEnd.y} 
+            stroke="#ff4444" strokeWidth={strokeW} strokeDasharray={dashArray} 
+          />
           <circle cx={measureStart.x} cy={measureStart.y} r={circleR} fill="#ff4444" />
           <circle cx={measureEnd.x} cy={measureEnd.y} r={circleR} fill="#ff4444" />
         </svg>
@@ -425,10 +440,30 @@ export function MapCanvas({
     if (measureMode === 'circle') {
       const radius = Math.hypot(measureEnd.x - measureStart.x, measureEnd.y - measureStart.y)
       return (
-        <svg key={renderKey} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 1001 }}>
-          <circle cx={measureStart.x} cy={measureStart.y} r={radius} stroke="#44aaff" strokeWidth={strokeW} strokeDasharray="5,5" fill="rgba(68,170,255,0.1)" />
+        <svg 
+          key={renderKey}
+          style={{ 
+            position: 'absolute', 
+            top: 0, 
+            left: 0, 
+            width: `${canvasWidth}px`,
+            height: `${canvasHeight}px`,
+            pointerEvents: 'none', 
+            zIndex: 1001,
+            overflow: 'visible'
+          }}
+        >
+          <circle 
+            cx={measureStart.x} cy={measureStart.y} r={radius} 
+            stroke="#44aaff" strokeWidth={strokeW} strokeDasharray={dashArray} 
+            fill="rgba(68,170,255,0.1)" 
+          />
           <circle cx={measureStart.x} cy={measureStart.y} r={circleR} fill="#44aaff" />
-          <line x1={measureStart.x} y1={measureStart.y} x2={measureEnd.x} y2={measureEnd.y} stroke="#44aaff" strokeWidth={strokeW * 0.7} strokeDasharray="3,3" />
+          <line 
+            x1={measureStart.x} y1={measureStart.y} 
+            x2={measureEnd.x} y2={measureEnd.y} 
+            stroke="#44aaff" strokeWidth={strokeW * 0.7} strokeDasharray={`${3/zoom},${3/zoom}`} 
+          />
         </svg>
       )
     }
@@ -447,8 +482,24 @@ export function MapCanvas({
       points += `M ${measureStart.x},${measureStart.y}`
       
       return (
-        <svg key={renderKey} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 1001 }}>
-          <path d={points} stroke="#ffaa44" strokeWidth={strokeW} strokeDasharray="5,5" fill="rgba(255,170,68,0.15)" />
+        <svg 
+          key={renderKey}
+          style={{ 
+            position: 'absolute', 
+            top: 0, 
+            left: 0, 
+            width: `${canvasWidth}px`,
+            height: `${canvasHeight}px`,
+            pointerEvents: 'none', 
+            zIndex: 1001,
+            overflow: 'visible'
+          }}
+        >
+          <path 
+            d={points} 
+            stroke="#ffaa44" strokeWidth={strokeW} strokeDasharray={dashArray} 
+            fill="rgba(255,170,68,0.15)" 
+          />
           <circle cx={measureStart.x} cy={measureStart.y} r={circleR} fill="#ffaa44" />
         </svg>
       )
@@ -457,7 +508,154 @@ export function MapCanvas({
     return null
   }
 
- const handleTokenSelect = useCallback((id, ctrlKey) => {
+  const renderRemoteRulers = () => {
+    return Object.entries(remoteRulers).map(([participantId, remoteRuler]) => {
+      if (!remoteRuler.start || !remoteRuler.end) return null;
+      
+      const strokeW = Math.max(2, 3 / zoom);
+      const circleR = Math.max(4, 5 / zoom);
+      const dashArray = `${5/zoom},${5/zoom}`;
+
+      const renderSVG = () => {
+        if (remoteRuler.mode === 'line') {
+          return (
+            <svg 
+              key={participantId}
+              style={{ 
+                position: 'absolute', 
+                top: 0, left: 0, 
+                width: `${canvasWidth}px`, 
+                height: `${canvasHeight}px`,
+                pointerEvents: 'none', 
+                zIndex: 999,
+                overflow: 'visible'
+              }}
+            >
+              <line 
+                x1={remoteRuler.start.x} y1={remoteRuler.start.y} 
+                x2={remoteRuler.end.x} y2={remoteRuler.end.y} 
+                stroke="#FFD700" strokeWidth={strokeW} strokeDasharray={dashArray} 
+                opacity={0.7}
+              />
+              <circle cx={remoteRuler.start.x} cy={remoteRuler.start.y} r={circleR} fill="#FFD700" opacity={0.7} />
+              <circle cx={remoteRuler.end.x} cy={remoteRuler.end.y} r={circleR} fill="#FFD700" opacity={0.7} />
+            </svg>
+          );
+        }
+
+        if (remoteRuler.mode === 'circle') {
+          const radius = Math.hypot(remoteRuler.end.x - remoteRuler.start.x, remoteRuler.end.y - remoteRuler.start.y);
+          return (
+            <svg 
+              key={participantId}
+              style={{ 
+                position: 'absolute', 
+                top: 0, left: 0, 
+                width: `${canvasWidth}px`, 
+                height: `${canvasHeight}px`,
+                pointerEvents: 'none', 
+                zIndex: 999,
+                overflow: 'visible'
+              }}
+            >
+              <circle 
+                cx={remoteRuler.start.x} cy={remoteRuler.start.y} r={radius} 
+                stroke="#FFD700" strokeWidth={strokeW} strokeDasharray={dashArray} 
+                fill="rgba(255,215,0,0.1)" opacity={0.7}
+              />
+              <circle cx={remoteRuler.start.x} cy={remoteRuler.start.y} r={circleR} fill="#FFD700" opacity={0.7} />
+              <line 
+                x1={remoteRuler.start.x} y1={remoteRuler.start.y} 
+                x2={remoteRuler.end.x} y2={remoteRuler.end.y} 
+                stroke="#FFD700" strokeWidth={strokeW * 0.7} strokeDasharray={`${3/zoom},${3/zoom}`} 
+                opacity={0.7}
+              />
+            </svg>
+          );
+        }
+
+        if (remoteRuler.mode === 'cone') {
+          const dx = remoteRuler.end.x - remoteRuler.start.x;
+          const dy = remoteRuler.end.y - remoteRuler.start.y;
+          const length = Math.hypot(dx, dy);
+          const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+          
+          let points = `M ${remoteRuler.start.x},${remoteRuler.start.y} `;
+          for (let i = -45; i <= 45; i += 5) {
+            const rad = (angle + i) * Math.PI / 180;
+            points += `${remoteRuler.start.x + Math.cos(rad) * length},${remoteRuler.start.y + Math.sin(rad) * length} `;
+          }
+          points += `M ${remoteRuler.start.x},${remoteRuler.start.y}`;
+          
+          return (
+            <svg 
+              key={participantId}
+              style={{ 
+                position: 'absolute', 
+                top: 0, left: 0, 
+                width: `${canvasWidth}px`, 
+                height: `${canvasHeight}px`,
+                pointerEvents: 'none', 
+                zIndex: 999,
+                overflow: 'visible'
+              }}
+            >
+              <path 
+                d={points} 
+                stroke="#FFD700" strokeWidth={strokeW} strokeDasharray={dashArray} 
+                fill="rgba(255,215,0,0.15)" opacity={0.7}
+              />
+              <circle cx={remoteRuler.start.x} cy={remoteRuler.start.y} r={circleR} fill="#FFD700" opacity={0.7} />
+            </svg>
+          );
+        }
+
+        return null;
+      };
+
+      const renderResult = () => {
+        if (!remoteRuler.result) return null;
+        
+        const midX = (remoteRuler.start.x + remoteRuler.end.x) / 2 * zoom + panX;
+        const midY = (remoteRuler.start.y + remoteRuler.end.y) / 2 * zoom + panY - 40;
+        const fontSize = Math.max(10, 12 / zoom);
+        
+        return (
+          <div 
+            key={`result-${participantId}`}
+            style={{ 
+              position: 'absolute', 
+              left: `${midX}px`, 
+              top: `${midY}px`, 
+              transform: 'translate(-50%, -50%)', 
+              background: 'rgba(0,0,0,0.8)', 
+              color: '#FFD700', 
+              padding: '4px 8px', 
+              borderRadius: '4px', 
+              fontSize: `${fontSize}px`, 
+              whiteSpace: 'nowrap', 
+              pointerEvents: 'none', 
+              zIndex: 1002,
+              fontFamily: 'monospace',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+              border: '1px solid rgba(255,215,0,0.3)'
+            }}
+          >
+            📏 {remoteRuler.result.cells} кл ({remoteRuler.result.feet} фт)
+          </div>
+        );
+      };
+
+      return (
+        <div key={`remote-ruler-${participantId}`}>
+          {renderSVG()}
+          {renderResult()}
+        </div>
+      );
+    });
+  };
+
+  const handleTokenSelect = useCallback((id, ctrlKey) => {
     if (ctrlKey) {
       setSelectedTokenIds(prev => 
         prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
@@ -569,6 +767,8 @@ export function MapCanvas({
       )}
 
       {renderContent()}
+      {renderRuler()}
+      {renderRemoteRulers()}
       <DrawingLayer
         drawingLayerRef={drawingLayerRef}
         activeTool={activeTool}
@@ -593,8 +793,6 @@ export function MapCanvas({
         <button className="zoom-btn" onClick={handleResetView}>⌂</button>
       </div>
 
-      {renderRuler()}
-
       {measureResult && measuring && measureStart && measureEnd && (
         (() => {
           const midX = (measureStart.x + measureEnd.x) / 2 * zoom + panX
@@ -603,8 +801,8 @@ export function MapCanvas({
           return (
             <div style={{ 
               position: 'absolute', 
-              left: midX, 
-              top: midY, 
+              left: `${midX}px`, 
+              top: `${midY}px`, 
               transform: 'translate(-50%, -50%)', 
               background: 'rgba(0,0,0,0.8)', 
               color: 'white', 

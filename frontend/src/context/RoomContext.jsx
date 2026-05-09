@@ -148,17 +148,17 @@ export function RoomProvider({ roomId, children }) {
       const data = JSON.parse(decoded);
 
       switch (topic) {
-      case 'game:token':
-        if (data.type === 'token:move') {
-          setTokens((prev) => {
-            const updated = prev.map((t) =>
-              t.id === data.payload.token_id
-                ? { ...t, position_x: data.payload.x, position_y: data.payload.y }
-                : t
-            );
-            return updated;
-          });
-        }
+        case 'game:token':
+          if (data.type === 'token:move') {
+            setTokens((prev) => {
+              const updated = prev.map((t) =>
+                t.id === data.payload.token_id
+                  ? { ...t, position_x: data.payload.x, position_y: data.payload.y }
+                  : t
+              );
+              return updated;
+            });
+          }
           if (data.type === 'token:created') {
             setTokens((prev) => {
               if (prev.find(t => t.id === data.payload.id)) {
@@ -206,7 +206,6 @@ export function RoomProvider({ roomId, children }) {
 
         case 'game:dice':
           if (data.type === 'dice:roll') {
-            
             let senderName = data.payload.senderName || 'Игрок';
             try {
               if (participant?.metadata) {
@@ -237,6 +236,18 @@ export function RoomProvider({ roomId, children }) {
                 }
               },
             ]);
+          }
+          break;
+
+        case 'game:ruler':
+          if (data.type === 'ruler:measuring') {
+            const payload = {
+              ...data.payload,
+              participantId: data.payload.participantId || participant?.identity || 'unknown'
+            };
+            window.dispatchEvent(new CustomEvent('ruler-update', {
+              detail: payload
+            }));
           }
           break;
 
@@ -312,13 +323,12 @@ export function RoomProvider({ roomId, children }) {
 
   const sendTokenMove = useCallback(
     async (token_id, x, y, rotation = null) => {
-        try {
-          await roomsAPI.updateTokenPosition(roomId, token_id, { position_x: x, position_y: y, rotation });
-
-          setTokens(prev => prev.map(t => t.id === token_id ? { ...t, position_x: x, position_y: y, rotation: rotation ?? t.rotation } : t));
-        } catch (err) {
-          console.error('Failed to persist token position:', err);
-        }
+      try {
+        await roomsAPI.updateTokenPosition(roomId, token_id, { position_x: x, position_y: y, rotation });
+        setTokens(prev => prev.map(t => t.id === token_id ? { ...t, position_x: x, position_y: y, rotation: rotation ?? t.rotation } : t));
+      } catch (err) {
+        console.error('Failed to persist token position:', err);
+      }
 
       try {
         sendData(
@@ -377,54 +387,54 @@ export function RoomProvider({ roomId, children }) {
   );
 
   const sendDiceRoll = useCallback(
-  (notation, total, rolls = [], modifier = 0, detailedString = '') => {
-    const tempId = Date.now();
-    const diceMessage = {
-      id: tempId,
-      content: `${notation} = ${total}`,
-      sender: user?.username || 'Вы',
-      timestamp: new Date(),
-      isOwn: true,
-      messageType: 'dice_roll',
-      diceData: {
-        notation,
-        total,
-        rolls,
-        modifier,
-        detailedString
-      }
-    };
-    setChatMessages((prev) => [...prev, diceMessage]);
-    
-    sendData(
-      {
-        type: 'dice:roll',
-        payload: {
+    (notation, total, rolls = [], modifier = 0, detailedString = '') => {
+      const tempId = Date.now();
+      const diceMessage = {
+        id: tempId,
+        content: `${notation} = ${total}`,
+        sender: user?.username || 'Вы',
+        timestamp: new Date(),
+        isOwn: true,
+        messageType: 'dice_roll',
+        diceData: {
           notation,
           total,
           rolls,
           modifier,
-          detailedString,
-          senderName: user?.username || 'Игрок'
+          detailedString
+        }
+      };
+      setChatMessages((prev) => [...prev, diceMessage]);
+      
+      sendData(
+        {
+          type: 'dice:roll',
+          payload: {
+            notation,
+            total,
+            rolls,
+            modifier,
+            detailedString,
+            senderName: user?.username || 'Игрок'
+          },
         },
-      },
-      'game:dice'
-    );
-    
-    roomsAPI.sendChatMessage(roomId, {
-      content: `${notation} = ${total}`,
-      message_type: 'dice_roll',
-      dice_data: {
-        notation,
-        total,
-        rolls,
-        modifier,
-        detailedString
-      }
-    }).catch(err => console.error('Failed to save dice message:', err));
-  },
-  [sendData, roomId, user, setChatMessages]
-);
+        'game:dice'
+      );
+      
+      roomsAPI.sendChatMessage(roomId, {
+        content: `${notation} = ${total}`,
+        message_type: 'dice_roll',
+        dice_data: {
+          notation,
+          total,
+          rolls,
+          modifier,
+          detailedString
+        }
+      }).catch(err => console.error('Failed to save dice message:', err));
+    },
+    [sendData, roomId, user, setChatMessages]
+  );
 
   const sendAudioEvent = useCallback(
     (eventType, payload) => {
@@ -434,6 +444,19 @@ export function RoomProvider({ roomId, children }) {
           payload,
         },
         'game:audio'
+      );
+    },
+    [sendData]
+  );
+
+  const sendRulerData = useCallback(
+    (type, payload) => {
+      sendData(
+        {
+          type: `ruler:${type}`,
+          payload,
+        },
+        'game:ruler'
       );
     },
     [sendData]
@@ -830,6 +853,7 @@ export function RoomProvider({ roomId, children }) {
     sendTokenMove,
     sendChatMessage,
     sendDiceRoll,
+    sendRulerData,
     syncMapAdded,
     syncMapDeleted,
     createToken,

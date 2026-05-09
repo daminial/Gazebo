@@ -6,7 +6,7 @@ export const RULER_MODES = {
   CONE: 'cone'
 }
 
-export function useRuler({ gridSize = 50, feetPerCell = 5, enabled = false }) {
+export function useRuler({ gridSize = 50, feetPerCell = 5, enabled = false, onMeasureUpdate }) {
   const [measuring, setMeasuring] = useState(false)
   const [measureMode, setMeasureMode] = useState(RULER_MODES.LINE)
   const [measureStart, setMeasureStart] = useState(null)
@@ -17,6 +17,11 @@ export function useRuler({ gridSize = 50, feetPerCell = 5, enabled = false }) {
   const animationFrameRef = useRef(null)
   const measureStartRef = useRef(null)
   const measureEndRef = useRef(null)
+  const measureModeRef = useRef(measureMode)
+
+  useEffect(() => {
+    measureModeRef.current = measureMode;
+  }, [measureMode]);
 
   const getDistance = useCallback((x1, y1, x2, y2) => {
     const dx = Math.abs(x2 - x1)
@@ -43,7 +48,16 @@ export function useRuler({ gridSize = 50, feetPerCell = 5, enabled = false }) {
     const dist = getDistance(measureStartRef.current.x, measureStartRef.current.y, x, y)
     setMeasureResult(dist)
     setRenderKey(prev => prev + 1)
-  }, [measuring, getDistance])
+    
+    if (onMeasureUpdate) {
+      onMeasureUpdate({
+        mode: measureModeRef.current,
+        start: measureStartRef.current,
+        end: { x, y },
+        result: dist
+      });
+    }
+  }, [measuring, getDistance, onMeasureUpdate])
 
   const scheduleUpdate = useCallback((x, y) => {
     if (animationFrameRef.current) {
@@ -58,12 +72,18 @@ export function useRuler({ gridSize = 50, feetPerCell = 5, enabled = false }) {
     setMeasuring(false)
     measureStartRef.current = null
     measureEndRef.current = null
+    
+    // Сообщаем что измерение завершено
+    if (onMeasureUpdate) {
+      onMeasureUpdate(null);
+    }
+    
     setTimeout(() => {
       setMeasureStart(null)
       setMeasureEnd(null)
       setMeasureResult(null)
     }, 2000)
-  }, [])
+  }, [onMeasureUpdate])
 
   const resetMeasure = useCallback(() => {
     setMeasuring(false)
@@ -75,7 +95,10 @@ export function useRuler({ gridSize = 50, feetPerCell = 5, enabled = false }) {
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current)
     }
-  }, [])
+    if (onMeasureUpdate) {
+      onMeasureUpdate(null);
+    }
+  }, [onMeasureUpdate])
 
   useEffect(() => {
     return () => {
