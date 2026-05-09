@@ -343,7 +343,6 @@ async def create_token(
 
     token = await service.add_token_to_room(room_id, token_data, current_user)
 
-    # Формируем ответ в том же формате, что и GET /tokens
     token_info = RoomTokenBasicInfo(
         id=token.id,
         name_in_room=token.name_in_room,
@@ -578,7 +577,6 @@ async def get_room_tokens(
             conditions=token.conditions or [],
         )
         
-        # Determine token type and get image URL
         template_data = None
         image_url = None
         
@@ -588,7 +586,6 @@ async def get_room_tokens(
             if template:
                 template_data = template.data if isinstance(template.data, dict) else {}
                 print(f"DEBUG: Template data: {template_data}")
-                # Get image URL from template's image_id
                 if getattr(template, 'image_id', None):
                     print(f"DEBUG: Template has image_id: {template.image_id}")
                     image_obj = await db.get(Image, template.image_id)
@@ -612,9 +609,6 @@ async def get_room_tokens(
         
         result.append(token_info)
     return result
-
-
-
 
 
 @router.put("/{room_id}/tokens/{token_id}", response_model=RoomTokenInRoom)
@@ -653,8 +647,6 @@ async def update_token(
         current_ac=token.current_ac,
         conditions=token.conditions or [],
     )
-    # Be defensive: token.creature_template might not be an ORM object (if bad data was sent),
-    # so check attributes before accessing.
     template_data = {}
     try:
         if token.creature_template and hasattr(token.creature_template, 'data') and isinstance(token.creature_template.data, dict):
@@ -664,7 +656,6 @@ async def update_token(
 
     token_info.token_type = template_data.get("token_type", "creature" if token.creature_template_id else "prop")
 
-    # Safe retrieval of image_url and creature template fields
     image_url = None
     if getattr(token, 'creature_template', None) and hasattr(token.creature_template, 'image') and token.creature_template.image:
         try:

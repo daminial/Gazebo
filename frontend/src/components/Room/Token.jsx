@@ -1,10 +1,11 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, memo } from 'react'
 import { useRoom } from '../../context/RoomContext'
 import { TokenEditModal } from './TokenEditModal'
 import './Token.css'
 
-export function Token({ token, gridSize, zoom, isSelected = false, onSelect, gridVisible = true }) {
-  const { sendTokenMove, deleteToken } = useRoom()
+export const Token = memo(function Token({ token, gridSize, zoom, isSelected, onSelect, gridVisible, currentUser, isDm }) {
+  const { sendTokenMove, deleteToken} = useRoom()
+  const canMove = isDm || token.controlled_by === currentUser?.id;
   const [isDragging, setIsDragging] = useState(false)
   const [showContextMenu, setShowContextMenu] = useState(null)
   const [showEditModal, setShowEditModal] = useState(false)
@@ -20,6 +21,7 @@ export function Token({ token, gridSize, zoom, isSelected = false, onSelect, gri
 
   const handleMouseDown = (e) => {
     if (e.button !== 0) return
+    if (!canMove) return;
     e.preventDefault()
     e.stopPropagation()
     
@@ -173,4 +175,4 @@ export function Token({ token, gridSize, zoom, isSelected = false, onSelect, gri
       )}
     </>
   )
-}
+})

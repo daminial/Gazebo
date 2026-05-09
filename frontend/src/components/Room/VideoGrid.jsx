@@ -83,25 +83,26 @@ export function VideoGrid() {
       if (room.remoteParticipants) {
         room.remoteParticipants.forEach((participant) => {
           const cameraPub = participant.getTrackPublication(Track.Source.Camera);
-          if (cameraPub && cameraPub.track) {
+          if (cameraPub) {
             remotes.push({
               participant,
               publication: cameraPub,
-              track: cameraPub.track,
-            });
-          }
-
-          const micPub = participant.getTrackPublication(Track.Source.Microphone);
-          if (micPub && micPub.track) {
-            remotes.push({
-              participant,
-              publication: micPub,
-              track: micPub.track,
+              track: cameraPub.track || null,
             });
           }
         });
       }
-      setRemoteTracks(remotes);
+      
+      const uniqueRemotes = [];
+      const seen = new Set();
+      remotes.forEach(r => {
+        if (!seen.has(r.participant.identity)) {
+          seen.add(r.participant.identity);
+          uniqueRemotes.push(r);
+        }
+      });
+      
+      setRemoteTracks(uniqueRemotes);
     };
 
     updateTracks();
@@ -223,9 +224,9 @@ export function VideoGrid() {
       )}
 
       {/* Удалённые участники */}
-      {remoteTracks.length > 0 && (
+      {remoteTracks.filter(tr => tr.track?.kind === 'video').length > 0 && (
         <div className="remote-videos">
-          {remoteTracks.map((trackRef) => (
+          {remoteTracks.filter(tr => tr.track?.kind === 'video').map((trackRef) => (
             <VideoTile
               key={trackRef.participant.sid + trackRef.track.sid}
               trackRef={trackRef}

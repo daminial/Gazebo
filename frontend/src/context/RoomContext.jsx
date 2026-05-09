@@ -148,16 +148,17 @@ export function RoomProvider({ roomId, children }) {
       const data = JSON.parse(decoded);
 
       switch (topic) {
-        case 'game:token':
-          if (data.type === 'token:move') {
-            setTokens((prev) =>
-              prev.map((t) =>
-                t.id === data.payload.token_id
-                  ? { ...t, position_x: data.payload.x, position_y: data.payload.y }
-                  : t
-              )
+      case 'game:token':
+        if (data.type === 'token:move') {
+          setTokens((prev) => {
+            const updated = prev.map((t) =>
+              t.id === data.payload.token_id
+                ? { ...t, position_x: data.payload.x, position_y: data.payload.y }
+                : t
             );
-          }
+            return updated;
+          });
+        }
           if (data.type === 'token:created') {
             setTokens((prev) => {
               if (prev.find(t => t.id === data.payload.id)) {
@@ -837,6 +838,7 @@ export function RoomProvider({ roomId, children }) {
     deleteToken,
     updateTokenHp,
     updateTokenVisibility,
+    user,
     isDm,
     audioPlayerState,
     setAudioPlayerState,

@@ -43,7 +43,6 @@ export default function CanvasEditor({
   const draggingRef = useRef(null)
   const [assetsLoading, setAssetsLoading] = useState(false)
 
-  // Закрытие меню при клике вне его
   useEffect(() => {
     if (!showMenu) return
     const handleClick = (e) => {
@@ -97,7 +96,6 @@ export default function CanvasEditor({
     setAssetsLoading(true)
     try {
       const { data } = await mapEditorAPI.getPackAssets(packId)
-      console.log('Loaded assets:', data?.length || 0, 'for pack:', packId)
       setAssets(data || [])
     } catch (e) {
       console.warn('Failed to load assets for pack', packId, e)
@@ -130,7 +128,6 @@ export default function CanvasEditor({
       if (!assetItem) return
       const id = assetItem.dataset.assetId
       if (!id) return
-      console.log('Drag start, asset id:', id)
       e.dataTransfer.setData('text/asset-id', id)
       e.dataTransfer.effectAllowed = 'move'
     }
@@ -138,7 +135,6 @@ export default function CanvasEditor({
     const handleDrop = async (e) => {
       e.preventDefault()
       const id = e.dataTransfer.getData('text/asset-id')
-      console.log('Drop, asset id:', id)
       if (!id) return
 
       const asset = assets.find((a) => String(a.id) === String(id))
@@ -152,8 +148,6 @@ export default function CanvasEditor({
       const scrollTop = canvasArea.scrollTop
       const x = Math.round((e.clientX - rect.left + scrollLeft - (asset.default_width || gridSize) / 2) / gridSize) * gridSize
       const y = Math.round((e.clientY - rect.top + scrollTop - (asset.default_height || gridSize) / 2) / gridSize) * gridSize
-
-      console.log('Adding object at:', x, y, 'asset:', asset.name || asset.id)
 
       try {
         const { data: serverObj } = await mapEditorAPI.addObject(projectId, {

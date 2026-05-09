@@ -23,7 +23,7 @@ export function MapCanvas({
     maps, activeMapId, pages, activePageId,
     setPageBackground, removePageBackground,
     tokens, setTokens, sendTokenMove, roomId, createToken,
-    isDm, deleteToken,
+    isDm, user, deleteToken,
   } = useRoom()
   const [showContextMenu, setShowContextMenu] = useState(null)
   const [showBgPicker, setShowBgPicker] = useState(false)
@@ -406,18 +406,6 @@ export function MapCanvas({
     setIsDragOver(false)
   }, [])
 
-  const getTokenDisplayPosition = useCallback((token) => {
-    const element = document.querySelector(`.token[data-token-id="${token.id}"]`)
-    if (element) {
-      const left = parseFloat(element.style.left)
-      const top = parseFloat(element.style.top)
-      if (!isNaN(left) && !isNaN(top)) {
-        return { x: left, y: top }
-      }
-    }
-    return { x: token.position_x, y: token.position_y }
-  }, [])
-
   const renderRuler = () => {
     if (!measuring || !measureStart || !measureEnd) return null
 
@@ -469,32 +457,33 @@ export function MapCanvas({
     return null
   }
 
+ const handleTokenSelect = useCallback((id, ctrlKey) => {
+    if (ctrlKey) {
+      setSelectedTokenIds(prev => 
+        prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+      )
+    } else {
+      setSelectedTokenIds([id])
+    }
+  }, [])
+
   const renderContent = () => (
     <>
       {tokens
         .filter(t => t.page_id === activePageId)
-        .map(token => {
-          const displayPos = getTokenDisplayPosition(token)
-          return (
-            <Token
-              key={token.id}
-              token={{ ...token, position_x: displayPos.x, position_y: displayPos.y }}
-              gridSize={gridSize}
-              zoom={zoom}
-              gridVisible={gridVisible}
-              isSelected={selectedTokenIds.includes(token.id)}
-              onSelect={(id, ctrlKey) => {
-                if (ctrlKey) {
-                  setSelectedTokenIds(prev => 
-                    prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
-                  )
-                } else {
-                  setSelectedTokenIds([id])
-                }
-              }}
-            />
-          )
-        })}
+        .map(token => (
+          <Token
+            key={token.id}
+            token={token}
+            gridSize={gridSize}
+            zoom={zoom}
+            gridVisible={gridVisible}
+            isSelected={selectedTokenIds.includes(token.id)}
+            currentUser={user}
+            isDm={isDm}  
+            onSelect={handleTokenSelect}
+          />
+        ))}
 
       {selectionRect && (
         <div
