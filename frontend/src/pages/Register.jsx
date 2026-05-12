@@ -2,9 +2,13 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import { FaEye, FaEyeSlash } from 'react-icons/fa'
+import { FcGoogle } from 'react-icons/fc'
+import { FaGithub, FaVk } from 'react-icons/fa'
 import TermsModal from '../components/TermsModal.jsx'
 import PrivacyModal from '../components/PrivacyModal.jsx'
 import styles from './Auth.module.css'
+
+const API_URL = ''
 
 export default function Register() {
   const [formData, setFormData] = useState({
@@ -14,6 +18,7 @@ export default function Register() {
     confirmPassword: '',
   })
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
@@ -31,6 +36,7 @@ export default function Register() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
+    setSuccess('')
 
     if (!agreedToTerms) {
       setError('Необходимо принять пользовательское соглашение')
@@ -47,8 +53,8 @@ export default function Register() {
       return
     }
 
-    if (formData.password.length < 6) {
-      setError('Пароль должен быть не менее 6 символов')
+    if (formData.password.length < 8) {
+      setError('Пароль должен быть не менее 8 символов')
       return
     }
 
@@ -60,28 +66,34 @@ export default function Register() {
         email: formData.email,
         password: formData.password,
       })
-      navigate('/login')
+      setSuccess('Код подтверждения отправлен на email. Проверьте почту.')
     } catch (err) {
-      const responseData = err.response?.data;
+      const responseData = err.response?.data
       
       if (responseData?.detail) {
         if (Array.isArray(responseData.detail)) {
-          const firstError = responseData.detail[0];
+          const firstError = responseData.detail[0]
           const message = firstError.msg
             .replace(/^Value error,\s*/i, '')
-            .replace(/^Assertion failed,\s*/i, '');
-          setError(message);
+            .replace(/^Assertion failed,\s*/i, '')
+          setError(message)
         } else if (typeof responseData.detail === 'string') {
-          setError(responseData.detail);
+          setError(responseData.detail)
         } else {
-          setError('Ошибка регистрации');
+          setError('Ошибка регистрации')
         }
       } else {
-        setError('Ошибка регистрации');
+        setError('Ошибка регистрации')
       }
     } finally {
       setLoading(false)
     }
+  }
+
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
+
+  const handleOAuthLogin = (provider) => {
+    window.location.href = `${API_URL}/auth/login/${provider}`
   }
 
   return (
@@ -96,6 +108,40 @@ export default function Register() {
         <div className={styles['auth-container']}>
           <div className={`${styles['auth-card']} ${styles['register']}`}>
             <h1>Регистрация</h1>
+
+            <div className={styles['oauth-buttons']}>
+              <button
+                type="button"
+                className={`${styles['btn-oauth']} ${styles['btn-google']}`}
+                onClick={() => handleOAuthLogin('google')}
+              >
+                <FcGoogle size={20} />
+                <span>Google</span>
+              </button>
+
+              <button
+                type="button"
+                className={`${styles['btn-oauth']} ${styles['btn-github']}`}
+                onClick={() => handleOAuthLogin('github')}
+              >
+                <FaGithub size={20} />
+                <span>GitHub</span>
+              </button>
+
+              <button
+                type="button"
+                className={`${styles['btn-oauth']} ${styles['btn-vk']}`}
+                onClick={() => handleOAuthLogin('vk')}
+              >
+                <FaVk size={20} />
+                <span>VK</span>
+              </button>
+            </div>
+
+            <div className={styles['divider']}>
+              <span>или</span>
+            </div>
+
             <form onSubmit={handleSubmit}>
               <div className={styles['form-group']}>
                 <input
@@ -195,6 +241,7 @@ export default function Register() {
               </div>
 
               {error && <p className={styles['error-message']}>{error}</p>}
+              {success && <p className={styles['success-message']}>{success}</p>}
 
               <button type="submit" className={`${styles['btn']} ${styles['btn-submit']}`} disabled={loading}>
                 {loading ? 'Регистрация...' : 'Зарегистрироваться'}

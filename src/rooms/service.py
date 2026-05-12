@@ -282,7 +282,8 @@ class RoomService:
             select(RoomMap)
             .filter_by(id=room_map.id)
             .options(
-                selectinload(RoomMap.template).selectinload(MapTemplate.image),
+                selectinload(RoomMap.template).selectinload(MapTemplate.image).selectinload(Image.thumbnail),
+                selectinload(RoomMap.template).selectinload(MapTemplate.tags),
                 selectinload(RoomMap.image).selectinload(Image.thumbnail)
             )
         )

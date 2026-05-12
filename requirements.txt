@@ -86,3 +86,5 @@ websockets==16.0
 wrapt==1.17.3
 yarl==1.22.0
 email-validator
+pydantic[email]
+aiosmtplib

@@ -2,8 +2,6 @@ from fastapi import HTTPException, status
 
 
 class AuthException(HTTPException):
-    """Базовое исключение для аутентификации"""
-
     def __init__(
             self,
             status_code: int = status.HTTP_401_UNAUTHORIZED,
@@ -21,6 +19,7 @@ class InvalidCredentialsException(AuthException):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Неверный логин или пароль"
         )
+
 
 class EmailAlreadyExistsException(AuthException):
     def __init__(self):
@@ -52,11 +51,19 @@ class InactiveUserException(AuthException):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Учётная запись отключена"
         )
+
+
 class UsernameValidationException(AuthException):
-    """Исключение для ошибок валидации username"""
     def __init__(self, detail: str = "Имя пользователя должно быть не менее 3 символов"):
         super().__init__(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=detail
         )
-        
+
+
+class EmailNotVerifiedException(AuthException):
+    def __init__(self):
+        super().__init__(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email не подтвержден. Проверьте почту для подтверждения."
+        )

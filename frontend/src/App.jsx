@@ -4,6 +4,7 @@ import Layout from './components/Layout.jsx'
 import GameLayout from './components/GameLayout.jsx'
 import Login from './pages/Login.jsx'
 import Register from './pages/Register.jsx'
+import VerifyEmail from './pages/VerifyEmail.jsx'
 import Home from './pages/Home.jsx'
 import Map from './pages/Map.jsx'
 import MapEditor from './pages/MapEditor.jsx'
@@ -14,7 +15,6 @@ import CompanyDetail from './pages/CompanyDetail.jsx'
 import GameBoard from './pages/GameBoard.jsx'
 import './App.css'
 
-// Заглушки для страниц
 function Music() {
   return (
     <div className="placeholder-page">
@@ -43,7 +43,8 @@ function CompaniesSearch() {
 }
 
 function PrivateRoute({ children }) {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, loading } = useAuth()
+  if (loading) return null
   return isAuthenticated ? children : <Navigate to="/login" />
 }
 
@@ -52,6 +53,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/verify-email" element={<VerifyEmail />} />
       <Route path="/" element={<Layout />}>
         <Route index element={<Home />} />
         <Route path="companies" element={

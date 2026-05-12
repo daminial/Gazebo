@@ -250,3 +250,71 @@
     width: 100%;
   }
 }
+.oauth-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.btn-oauth {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border: 2px solid #C98B4A;
+  border-radius: 12px;
+  background: #fff;
+  color: #5A4A3A;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-oauth:hover {
+  background: #FEF3DF;
+  transform: translateY(-1px);
+}
+
+.btn-google:hover {
+  border-color: #4285F4;
+}
+
+.btn-github:hover {
+  border-color: #333;
+}
+
+.btn-vk:hover {
+  border-color: #0077FF;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 20px 0;
+  color: #C98B4A;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid #C98B4A;
+}
+
+.divider span {
+  padding: 0 10px;
+  font-size: 14px;
+}
+
+.success-message {
+  color: #2B7A22;
+  background: rgba(43, 122, 34, 0.1);
+  padding: 0.75rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  text-align: center;
+  border: 1px solid rgba(43, 122, 34, 0.2);
+}

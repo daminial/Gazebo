@@ -1,4 +1,6 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from typing import Optional
+
 
 class Settings(BaseSettings):
 
@@ -30,10 +32,35 @@ class Settings(BaseSettings):
     LIVEKIT_API_SECRET: str
     LIVEKIT_URL: str
 
+    SMTP_HOST: str = "smtp.bz"
+    SMTP_PORT: int = 465
+    SMTP_USERNAME: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_SENDER_EMAIL: str = ""
+    SMTP_USE_TLS: bool = True
+
+    VERIFICATION_CODE_EXPIRE_MINUTES: int = 15
+
+    GITHUB_CLIENT_ID: Optional[str] = None
+    GITHUB_CLIENT_SECRET: Optional[str] = None
+    GITHUB_REDIRECT_URI: Optional[str] = None
+
+    GOOGLE_CLIENT_ID: Optional[str] = None
+    GOOGLE_CLIENT_SECRET: Optional[str] = None
+    GOOGLE_REDIRECT_URI: Optional[str] = None
+
+    VK_CLIENT_ID: Optional[str] = None
+    VK_CLIENT_SECRET: Optional[str] = None
+    VK_REDIRECT_URI: Optional[str] = None
+
+    FRONTEND_URL: str = "http://localhost"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=True,
+        extra="allow",
     )
+
 
 settings = Settings()

@@ -2,7 +2,11 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import { FaEye, FaEyeSlash } from 'react-icons/fa'
+import { FcGoogle } from 'react-icons/fc'
+import { FaGithub, FaVk } from 'react-icons/fa'
 import styles from './Auth.module.css'
+
+const API_URL = ''
 
 export default function Login() {
   const [formData, setFormData] = useState({
@@ -34,6 +38,12 @@ export default function Login() {
     }
   }
 
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
+
+  const handleOAuthLogin = (provider) => {
+    window.location.href = `${API_URL}/auth/login/${provider}`
+  }
+  
   return (
     <div className={styles['auth-page']}>
       <header className={styles['auth-header']}>
@@ -45,6 +55,40 @@ export default function Login() {
       <div className={styles['auth-container']}>
         <div className={styles['auth-card']}>
           <h1>Вход</h1>
+
+          <div className={styles['oauth-buttons']}>
+            <button
+              type="button"
+              className={`${styles['btn-oauth']} ${styles['btn-google']}`}
+              onClick={() => handleOAuthLogin('google')}
+            >
+              <FcGoogle size={20} />
+              <span>Google</span>
+            </button>
+
+            <button
+              type="button"
+              className={`${styles['btn-oauth']} ${styles['btn-github']}`}
+              onClick={() => handleOAuthLogin('github')}
+            >
+              <FaGithub size={20} />
+              <span>GitHub</span>
+            </button>
+
+            <button
+              type="button"
+              className={`${styles['btn-oauth']} ${styles['btn-vk']}`}
+              onClick={() => handleOAuthLogin('vk')}
+            >
+              <FaVk size={20} />
+              <span>VK</span>
+            </button>
+          </div>
+
+          <div className={styles['divider']}>
+            <span>или</span>
+          </div>
+
           <form onSubmit={handleSubmit}>
             <div className={styles['form-group']}>
               <input
@@ -78,10 +122,10 @@ export default function Login() {
 
             {error && <p className={styles['error-message']}>{error}</p>}
 
-            <button type="submit" className={`${styles.btn} ${styles['btn-submit']}`} disabled={loading}>
+            <button type="submit" className={`${styles['btn']} ${styles['btn-submit']}`} disabled={loading}>
               {loading ? 'Вход...' : 'Войти'}
             </button>
-            <Link to="/register" className={`${styles.btn} ${styles['btn-back']}`}>
+            <Link to="/register" className={`${styles['btn']} ${styles['btn-back']}`}>
               Нет аккаунта? Зарегистрироваться
             </Link>
           </form>

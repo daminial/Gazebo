@@ -1,19 +1,13 @@
-keys:
-  APILocalKey123: fbcba4553a2931d791341fd0f0ed0555
-
+port: 7880
 rtc:
   tcp_port: 7881
   udp_port: 7882
-  node_ip: 192.168.1.166
-  port_range_start: 50000
-  port_range_end: 60000
-  use_external_ip: true
-
-port: 7880
-
+  use_external_ip: false
+  node_ip: 192.168.0.109
+keys:
+  APILocalKey123: LIVEKIT_API_KEY
 logging:
-  level: debug
-
+  level: info
 room:
   enabled_codecs:
     - mime: video/vp8

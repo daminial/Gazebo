@@ -22,6 +22,8 @@ export default function PrivacyModal({ isOpen, onClose, onAccept }) {
         <button className={styles['close-btn']} onClick={onClose}>
           <FaTimes />
         </button>
+
+        <h2>Согласие на обработку персональных данных</h2>
         
         <div className={styles['terms-text']}>
           <p>

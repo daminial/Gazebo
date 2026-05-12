@@ -7,16 +7,16 @@ from datetime import datetime
 
 
 class UserBase(BaseModel):
-    """Базовая модель пользователя"""
-
     email: EmailStr
-    username: str = Field(...)
+    username: str
     full_name: Optional[str] = None
 
 
-class UserCreate(UserBase):
-    """Модель для проверки при создании пользователя"""
-    password: str  # Без min_length
+class UserCreate(BaseModel):
+    email: EmailStr
+    username: str = Field(min_length=3, max_length=50)
+    password: str
+    full_name: Optional[str] = None
 
     @field_validator('password')
     def password_strength(cls, v):
@@ -30,37 +30,66 @@ class UserCreate(UserBase):
 
 
 class UserUpdate(BaseModel):
-    """Модель для обноваления пользователя"""
     email: Optional[EmailStr] = None
     full_name: Optional[str] = None
     password: Optional[str] = Field(None, min_length=8)
 
 
-class UserInDB(UserBase):
-    """Модель еак будем хранить пользователя в БД"""
+class EmailVerification(BaseModel):
+    email: EmailStr
+    code: str
 
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+class UserInDB(BaseModel):
     id: UUID
+    email: str
+    username: str
+    full_name: Optional[str] = None
+    avatar_id: Optional[int] = None
+    email_verified: bool
+    oauth_provider: Optional[str] = None
     is_active: bool
     is_superuser: bool
+    role: Optional[str] = "user"
     created_at: datetime
     updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
+    
+    @property
+    def avatar_url(self) -> Optional[str]:
+        if self.avatar_id:
+            return f"/api/auth/avatar/{self.id}"
+        return None
 
 
-class UserPublic(UserBase):
+class UserPublic(BaseModel):
     id: UUID
+    email: str
+    username: str
+    full_name: Optional[str] = None
+    avatar_id: Optional[int] = None
     created_at: datetime
 
     class Config:
         from_attributes = True
+    
+    @property
+    def avatar_url(self) -> Optional[str]:
+        if self.avatar_id:
+            return f"/api/auth/avatar/{self.id}"
+        return None
 
 
 class Token(BaseModel):
-    """Токен доступа пользователя"""
     access_token: str
-    token_type: str
+    token_type: str = "bearer"
     refresh_token: Optional[str] = None
 
 
@@ -70,12 +99,6 @@ class TokenPayload(BaseModel):
     type: str = "access"
 
 
-class LoginRequest(BaseModel):
-    """Модель входа"""
-    username: str
-    password: str
-
-
 class RefreshTokenRequest(BaseModel):
-    """Модель для обновления токена"""
     refresh_token: str
+    
