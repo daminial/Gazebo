@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, ConfigDict, field_validator
+from pydantic import BaseModel, Field, ConfigDict, field_validator, validator
 from uuid import UUID
 from datetime import datetime
 from typing import Optional, List
@@ -67,8 +67,16 @@ class MapTemplateListItem(BaseModel):
     rating: Decimal = Decimal("0.0")
     votes: int = 0
     created_at: datetime
+    owner_username: Optional[str] = None
+    tags: Optional[List[str]] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+    @validator('owner_username', always=True)
+    def set_owner_username(cls, v, values):
+        if not v and 'owner' in values:
+            return values['owner'].username
+        return v
 
 
 #Схемы для карт в комнатах

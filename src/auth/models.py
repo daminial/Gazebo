@@ -32,6 +32,11 @@ class User(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     avatar = relationship("Image", foreign_keys=[avatar_id])
+    map_ratings = relationship(
+        "MapRating",
+         back_populates="user", 
+        cascade="all, delete-orphan"
+    )
     media_files = relationship(
         "MediaFile",
         foreign_keys="[MediaFile.uploaded_by]",

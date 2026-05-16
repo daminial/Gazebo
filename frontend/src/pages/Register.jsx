@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import { FaEye, FaEyeSlash } from 'react-icons/fa'
 import { FcGoogle } from 'react-icons/fc'
-import { FaGithub, FaVk } from 'react-icons/fa'
+import { FaGithub, FaYandex } from 'react-icons/fa'
 import TermsModal from '../components/TermsModal.jsx'
 import PrivacyModal from '../components/PrivacyModal.jsx'
 import styles from './Auth.module.css'
@@ -66,7 +66,7 @@ export default function Register() {
         email: formData.email,
         password: formData.password,
       })
-      setSuccess('Код подтверждения отправлен на email. Проверьте почту.')
+      navigate('/verify-email', { state: { email: formData.email } })
     } catch (err) {
       const responseData = err.response?.data
       
@@ -128,14 +128,13 @@ export default function Register() {
                 <span>GitHub</span>
               </button>
 
-              <button
-                type="button"
-                className={`${styles['btn-oauth']} ${styles['btn-vk']}`}
-                onClick={() => handleOAuthLogin('vk')}
+              <button type="button" 
+                className={`${styles['btn-oauth']} ${styles['btn-yandex']}`}
+                onClick={() => handleOAuthLogin('yandex')}
               >
-                <FaVk size={20} />
-                <span>VK</span>
-              </button>
+                <FaYandex size={20} />
+                <span>Yandex</span>
+            </button>
             </div>
 
             <div className={styles['divider']}>

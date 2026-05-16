@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { mapTemplatesAPI, mapEditorAPI } from '../api'
 import { useNavigate } from 'react-router-dom'
 import './Map.css'
-import { FiMoreHorizontal, FiTrash2 } from 'react-icons/fi'
+import { FiMoreHorizontal, FiTrash2, FiStar } from 'react-icons/fi'
 
 export default function Map() {
   const [myMaps, setMyMaps] = useState([])
@@ -25,6 +25,9 @@ export default function Map() {
 
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deletingMap, setDeletingMap] = useState(null)
+
+  const [selectedMapForRating, setSelectedMapForRating] = useState(null)
+  const [hoverRating, setHoverRating] = useState(0)
 
   const openCreate = () => {
     setProjName('')
@@ -80,6 +83,21 @@ export default function Map() {
 
   const toggleOrder = () => {
     setOrder((o) => (o === 'desc' ? 'asc' : 'desc'))
+  }
+
+  const handleRate = async (rating) => {
+    if (!selectedMapForRating) return
+    try {
+      const { data } = await mapTemplatesAPI.rate(selectedMapForRating.id, rating)
+      setTopMaps(prev => prev.map(m =>
+        m.id === selectedMapForRating.id ? { ...m, rating: data.rating, votes: data.votes } : m
+      ))
+      setSelectedMapForRating(null)
+      setHoverRating(0)
+    } catch (err) {
+      console.error('Ошибка при выставлении рейтинга:', err)
+      alert('Не удалось выставить рейтинг')
+    }
   }
 
   if (loading) return <div className="loading">Загрузка...</div>
@@ -315,7 +333,7 @@ export default function Map() {
           </div>
         </div>
       )}
-
+      
       <section className="top-maps">
         <div className="top-header">
           <h2>Топ карт</h2>
@@ -337,25 +355,56 @@ export default function Map() {
         ) : (
           <div className="top-list">
             {topMaps.map((m) => (
-              <div className="top-card" key={m.id}>
-                <div className="top-card-left">
+              <div 
+                className="top-card" 
+                key={m.id}
+                onClick={() => setSelectedMapForRating(m)}
+              >
+                {/* Левая часть: Картинка */}
+                <div className="top-card-image-wrapper">
                   {m.image_url ? (
                     <img src={m.image_url} alt={m.name} />
                   ) : (
-                    <div className="map-placeholder">Нет изображения</div>
+                    <div className="top-card-image-placeholder">
+                      Нет изображения
+                    </div>
                   )}
                 </div>
-                <div className="top-card-body">
-                  <h3>{m.name}</h3>
-                  <div className="meta">
-                    <span className="author">Автор: {m.owner_id ? m.owner_id.slice(0, 8) : '-'}</span>
-                    <span className="rating">★ {m.rating ?? 0}</span>
-                  </div>
-                  {m.description && <p className="map-description">{m.description}</p>}
-                  <div className="tags-row">
-                    {(m.tags || []).map((t) => (
-                      <span className="tag" key={t.id}>{t.name}</span>
-                    ))}
+
+                {/* Правая часть: Контент */}
+                <div className="top-card-content">
+                  <div className="top-card-header">
+                    <div className="top-card-info">
+                      <h3>{m.name}</h3>
+                      <div className="top-card-meta">
+                         Автор: {m.owner_username}
+                      </div>
+                      {m.description && (
+                        <p className="top-card-description">
+                          {m.description}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="top-card-rating-box">
+                      <div className="rating-badge">
+                        <FiStar style={{ fill: 'transparent', stroke: '#eee', strokeWidth: 2, width: 16, height: 16 }} />
+                        <span>{typeof m.rating === 'number' ? m.rating.toFixed(2) : '0.00'}</span>
+                      </div>
+                      
+                      <div className="top-card-tags">
+                        {(m.tags || []).slice(0, 4).map((tagName, index) => (
+                          <span key={index} className="top-card-tag">
+                            {tagName}
+                          </span>
+                        ))}
+                        {m.tags && m.tags.length > 4 && (
+                          <span className="top-card-tag-more">
+                            +{m.tags.length - 4}
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -363,6 +412,73 @@ export default function Map() {
           </div>
         )}
       </section>
+
+      {/* Rating Modal */}
+      {/* Rating Modal */}
+      {selectedMapForRating && (
+        <div className="modal-overlay" onClick={() => setSelectedMapForRating(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close" onClick={() => setSelectedMapForRating(null)}>✕</button>
+            
+            <div className="modal-image-wrapper">
+              {selectedMapForRating.image_url ? (
+                <img 
+                  src={selectedMapForRating.image_url} 
+                  alt={selectedMapForRating.name} 
+                  className="modal-image"
+                  style={{
+                    maxWidth: '100%',
+                    maxHeight: '50vh',
+                    width: 'auto',
+                    height: 'auto',
+                    objectFit: 'contain',
+                    display: 'block',
+                    margin: '0 auto'
+                  }}
+                />
+              ) : (
+                <div className="modal-image-placeholder">{selectedMapForRating.name}</div>
+              )}
+            </div>
+            
+            <h3 className="modal-title">{selectedMapForRating.name}</h3>
+            
+            {selectedMapForRating.tags && selectedMapForRating.tags.length > 0 && (
+              <div className="modal-tags-section">
+                <p className="modal-tags-label">Теги:</p>
+                <div className="modal-tags-container">
+                  {selectedMapForRating.tags.map((tagName, index) => (
+                    <span key={index} className="modal-tag">
+                      {tagName}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            <div className="rating-section">
+              <p className="rating-label">Ваш рейтинг (1-10):</p>
+              <div className="stars-container">
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((starValue) => (
+                  <button
+                    key={starValue}
+                    className={`star-btn ${starValue <= (hoverRating || selectedMapForRating.rating) ? 'active' : ''}`}
+                    onClick={() => handleRate(starValue)}
+                    onMouseEnter={() => setHoverRating(starValue)}
+                    onMouseLeave={() => setHoverRating(0)}
+                  >
+                    <FiStar className="star-icon" />
+                  </button>
+                ))}
+              </div>
+              <p className="current-rating">
+                Средний рейтинг: {Number(selectedMapForRating.rating || 0).toFixed(1)}/10 
+                ({selectedMapForRating.votes || 0} {selectedMapForRating.votes === 1 ? 'голос' : 'голосов'})
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

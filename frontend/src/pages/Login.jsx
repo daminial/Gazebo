@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import { FaEye, FaEyeSlash } from 'react-icons/fa'
 import { FcGoogle } from 'react-icons/fc'
-import { FaGithub, FaVk } from 'react-icons/fa'
+import { FaGithub, FaYandex } from 'react-icons/fa'
 import styles from './Auth.module.css'
 
 const API_URL = ''
@@ -75,13 +75,12 @@ export default function Login() {
               <span>GitHub</span>
             </button>
 
-            <button
-              type="button"
-              className={`${styles['btn-oauth']} ${styles['btn-vk']}`}
-              onClick={() => handleOAuthLogin('vk')}
+            <button type="button" 
+              className={`${styles['btn-oauth']} ${styles['btn-yandex']}`}
+              onClick={() => handleOAuthLogin('yandex')}
             >
-              <FaVk size={20} />
-              <span>VK</span>
+              <FaYandex size={20} />
+              <span>Yandex</span>
             </button>
           </div>
 

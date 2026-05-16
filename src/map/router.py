@@ -67,7 +67,8 @@ async def get_public_templates(
     limit: int = Query(20, ge=1, le=100),
     tag: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
-    s3_client: S3Client = Depends(get_s3_client)
+    s3_client: S3Client = Depends(get_s3_client),
+    current_user: User = Depends(get_current_user)
 ):
     """Получить публичные шаблоны карт"""
     template_service = MapTemplateService(db=db, media_service=None)
@@ -80,11 +81,24 @@ async def get_public_templates(
     media_service = MediaService(s3_client=s3_client, db_session=db)
     result = []
     for template in templates:
-        item = MapTemplateListItem.model_validate(template)
+        item_data = {
+            "id": template.id,
+            "name": template.name,
+            "description": template.description,
+            "image_id": template.image_id,
+            "owner_id": template.owner_id,
+            "is_public": template.is_public,
+            "rating": template.rating,
+            "votes": template.votes,
+            "created_at": template.created_at,
+            "tags": [tag.name for tag in template.tags] if template.tags else [],
+            "owner_username": template.owner.username if template.owner else None
+        }
         if template.image:
-            item.image_url = await media_service.get_image_url(template.image)
-        result.append(item)
-    
+            item_data["image_url"] = await media_service.get_image_url(template.image)
+        item = MapTemplateListItem(**item_data)
+        result.append(item) 
+
     return result
 
 
@@ -101,11 +115,24 @@ async def get_my_templates(
     media_service = MediaService(s3_client=s3_client, db_session=db)
     result = []
     for template in templates:
-        item = MapTemplateListItem.model_validate(template)
+        item_data = {
+            "id": template.id,
+            "name": template.name,
+            "description": template.description,
+            "image_id": template.image_id,
+            "owner_id": template.owner_id,
+            "is_public": template.is_public,
+            "rating": template.rating,
+            "votes": template.votes,
+            "created_at": template.created_at,
+            "tags": [tag.name for tag in template.tags] if template.tags else [],
+            "owner_username": template.owner.username if template.owner else None
+        }
         if template.image:
-            item.image_url = await media_service.get_image_url(template.image)
+            item_data["image_url"] = await media_service.get_image_url(template.image)
+        item = MapTemplateListItem(**item_data)
         result.append(item)
-    
+
     return result
 
 
@@ -158,15 +185,15 @@ async def update_map_template(
     
     return await template_service.to_response(template)
 
-@router.post("/{template_id}/vote", response_model=MapTemplateResponse)
-async def vote_template(
+
+@router.patch("/{template_id}/rate", response_model=MapTemplateResponse)
+async def rate_map_template(
     template_id: int,
-    rating: float = Query(..., ge=1, le=5),
+    rating: float = Query(..., ge=0.5, le=10),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
     s3_client: S3Client = Depends(get_s3_client)
 ):
-    """Проголосовать за шаблон карты"""
     media_service = MediaService(s3_client=s3_client, db_session=db)
     template_service = MapTemplateService(db=db, media_service=media_service)
     

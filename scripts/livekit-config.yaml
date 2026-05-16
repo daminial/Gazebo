@@ -3,7 +3,7 @@ rtc:
   tcp_port: 7881
   udp_port: 7882
   use_external_ip: false
-  node_ip: 192.168.0.109
+  node_ip: 192.168.1.166
 keys:
   APILocalKey123: LIVEKIT_API_KEY
 logging:

@@ -52,6 +52,7 @@ api.interceptors.response.use(
 export const authAPI = {
   login: (credentials) => api.post('/auth/login', credentials),
   register: (userData) => api.post('/auth/register', userData),
+  verifyEmail: (email, code) => api.post('/auth/verify-email', { email, code }), 
   getMe: () => api.get('/auth/me'),
   updateMe: (data) => api.put('/auth/me', data),
   refreshToken: (refreshToken) => api.post('/auth/refresh', { refresh_token: refreshToken }),
@@ -216,9 +217,10 @@ export const mapTemplatesAPI = {
   },
   getById: (id) => api.get(`/map-templates/${id}`),
   delete: (id) => api.delete(`/map-templates/${id}`),
+  rate: (templateId, rating) => api.patch(`/map-templates/${templateId}/rate?rating=${rating}`),
 }
 
-export const mapEditorAPI = {
+export const mapEditorAPI = { 
   getPacks: () => api.get('/map-editor/packs'),
   
   createPack: (data) => api.post('/map-editor/packs', data),

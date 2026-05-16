@@ -23,6 +23,25 @@ class Tag(Base):
     templates = relationship("MapTemplate", secondary=map_template_tags, back_populates="tags")
 
 
+class MapRating(Base):
+    """Рейтинг карты от пользователя"""
+    __tablename__ = "map_ratings"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    template_id = Column(Integer, ForeignKey("map_templates.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    rating = Column(Numeric(3, 1), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    template = relationship("MapTemplate", back_populates="ratings")
+    user = relationship("User", back_populates="map_ratings")
+    
+    __table_args__ = (
+        Index('idx_map_ratings_template_user', 'template_id', 'user_id', unique=True),
+    )
+
+
 class MapTemplate(Base):
     """Шаблон карты в библиотеке пользователя"""
     __tablename__ = "map_templates"
@@ -46,6 +65,7 @@ class MapTemplate(Base):
     owner = relationship("User", foreign_keys=[owner_id], back_populates="map_templates")
     tags = relationship("Tag", secondary=map_template_tags, back_populates="templates")
     room_instances = relationship("RoomMap", back_populates="template", cascade="all, delete-orphan")
+    ratings = relationship("MapRating", back_populates="template", cascade="all, delete-orphan")
 
     __table_args__ = (
         Index('idx_map_templates_owner_id', 'owner_id'),
@@ -58,6 +78,7 @@ class MapTemplate(Base):
         postgresql_ops={"rating": "DESC", "votes": "DESC"}
     ),
     )
+
 
 class RoomMap(Base):
     """Экземпляр карты в комнате"""

@@ -14,7 +14,7 @@ from src.map.exceptions import (
     ImageNotFoundError
 )
 from src.core.storage.models import Image
-from src.map.schemas import MapTemplateResponse
+from src.map.schemas import MapTemplateResponse, MapTemplateListItem
 
 
 class MapTemplateService:
@@ -149,7 +149,11 @@ class MapTemplateService:
             select(MapTemplate)
             .filter(MapTemplate.owner_id == user_id)
             .order_by(MapTemplate.created_at.desc())
-            .options(selectinload(MapTemplate.image))
+            .options(
+                selectinload(MapTemplate.image),
+                selectinload(MapTemplate.tags),
+                selectinload(MapTemplate.owner)
+            )
         )
         return list(result.scalars().all())
 
@@ -163,17 +167,38 @@ class MapTemplateService:
         query = (
             select(MapTemplate)
             .filter(MapTemplate.is_public == True)
-            .options(selectinload(MapTemplate.image))
+            .options(
+                selectinload(MapTemplate.image),
+                selectinload(MapTemplate.tags),
+                selectinload(MapTemplate.owner)
+            )
         )
-        
+
         if tag:
             query = query.join(MapTemplate.tags).filter(Tag.name == tag.lower())
-        
+
         query = query.order_by(MapTemplate.rating.desc(), MapTemplate.votes.desc())
         query = query.offset(skip).limit(limit)
-        
+
         result = await self.db.execute(query)
         return list(result.scalars().all())
+
+    @staticmethod
+    def _map_template_to_list_item(template: MapTemplate) -> MapTemplateListItem:
+        """Конвертировать модель MapTemplate в схему MapTemplateListItem"""
+        tag_names = [tag.name for tag in template.tags] if template.tags else []
+        return MapTemplateListItem(
+            id=template.id,
+            name=template.name,
+            description=template.description,
+            image_id=template.image_id,
+            owner_id=template.owner_id,
+            is_public=template.is_public,
+            rating=template.rating,
+            votes=template.votes,
+            created_at=template.created_at,
+            tags=tag_names
+        )
 
     async def update_template(
             self,
@@ -234,20 +259,44 @@ class MapTemplateService:
         user_id: UUID,
         rating: float
     ) -> MapTemplate:
-        """Проголосовать за шаблон (упрощенная версия без проверки повторного голосования)"""
+        """Поставить или обновить рейтинг карты"""
+        from src.map.models import MapRating
+        
         template = await self.get_template(template_id)
         if not template:
             raise TemplateNotFoundError(template_id)
         
-        if rating < 1 or rating > 5:
-            raise ValueError("Рейтинг должен быть от 1 до 5")
+        if rating < 1 or rating > 10:
+            raise ValueError("Рейтинг должен быть от 1 до 10")
         
-        total_rating = float(template.rating) * template.votes
-        template.votes += 1
-        template.rating = round((total_rating + rating) / template.votes, 1)
+        result = await self.db.execute(
+            select(MapRating).filter(
+                MapRating.template_id == template_id,
+                MapRating.user_id == user_id
+            )
+        )
+        user_rating = result.scalar_one_or_none()
+        
+        if user_rating:
+            old_rating = float(user_rating.rating)
+            user_rating.rating = rating
+            
+            total = float(template.rating) * template.votes
+            total = total - old_rating + rating
+            template.rating = round(total / template.votes, 1)
+        else:
+            user_rating = MapRating(
+                template_id=template_id,
+                user_id=user_id,
+                rating=rating
+            )
+            self.db.add(user_rating)
+            
+            total = float(template.rating) * template.votes
+            template.votes += 1
+            template.rating = round((total + rating) / template.votes, 1)
         
         await self.db.flush()
-        
         await self.db.refresh(template)
         
         return template

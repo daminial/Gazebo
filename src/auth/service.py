@@ -1,7 +1,7 @@
 # service.py
 from typing import Optional, List
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_, and_
+from sqlalchemy import func, select, or_, and_
 from uuid import UUID
 from datetime import datetime, timezone
 import uuid as uuid_lib
@@ -59,7 +59,7 @@ class AuthService:
         stmt = select(User).filter(
             User.email == email,
             User.verification_code == code,
-            User.verification_code_expires > datetime.now(timezone.utc)
+            User.verification_code_expires > func.now()
         )
         result = await self.db.execute(stmt)
         user = result.scalar_one_or_none()

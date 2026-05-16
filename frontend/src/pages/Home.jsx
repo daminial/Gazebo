@@ -1,6 +1,32 @@
 import './Home.css'
+import { useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { mapTemplatesAPI } from '../api'
 
 export default function Home() {
+  const navigate = useNavigate()
+  const [topMaps, setTopMaps] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchTopMaps = async () => {
+      try {
+        const response = await mapTemplatesAPI.getTop()
+        const sortedMaps = response.data
+          .sort((a, b) => (b.rating || 0) - (a.rating || 0))
+          .slice(0, 3)
+        setTopMaps(sortedMaps)
+      } catch (error) {
+        console.error('Failed to fetch top maps:', error)
+        setTopMaps([])
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchTopMaps()
+  }, [])
+
   return (
     <div className="home">
       {/* Companies Section */}
@@ -23,15 +49,28 @@ export default function Home() {
       <section className="section">
         <h2 className="section-title">Топ карт</h2>
         <div className="cards-grid">
-          <div className="card">
-            <img src="https://placehold.co/400x180/D2B48C/8B4513?text=Map+1" alt="Map" className="card-image" />
-          </div>
-          <div className="card">
-            <img src="https://placehold.co/400x180/D2B48C/8B4513?text=Map+2" alt="Map" className="card-image" />
-          </div>
-          <div className="card">
-            <img src="https://placehold.co/400x180/D2B48C/8B4513?text=Map+3" alt="Map" className="card-image" />
-          </div>
+           {loading ? (
+            <div className="card">Загрузка...</div>
+          ) : topMaps.length > 0 ? (
+            topMaps.map((map) => (
+              <div
+                key={map.id}
+                className="card map-card-clickable"
+                onClick={() => navigate('/maps')}
+              >
+                <img
+                  src={map.image_url || map.preview_url || 'https://placehold.co/400x180/D2B48C/8B4513?text=Map'}
+                  alt={map.name || 'Карта'}
+                  className="card-image"
+                />
+                <div className="map-rating-preview">
+                  ★ {map.rating || 0}
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="card">Нет доступных карт</div>
+          )}
         </div>
       </section>
 

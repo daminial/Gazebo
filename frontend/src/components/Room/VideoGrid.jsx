@@ -14,51 +14,19 @@ export function VideoGrid() {
   useEffect(() => {
     async function requestLocalTracks() {
       if (!room || !isConnected) return;
-
       try {
-        try {
-          const audioStream = await navigator.mediaDevices.getUserMedia({ 
-            audio: true 
-          });
-          audioStream.getTracks().forEach(track => track.stop());
-          console.log('Microphone permission granted');
-        } catch (audioErr) {
-          console.error('Microphone permission denied:');
-          setIsMicEnabled(false);
-        }
-
-        try {
-          const videoStream = await navigator.mediaDevices.getUserMedia({ 
-            video: true 
-          });
-          videoStream.getTracks().forEach(track => track.stop());
-          console.log('Camera permission granted');
-        } catch (videoErr) {
-          console.error('Camera permission denied:');
-          setIsCameraEnabled(false);
-        }
-        const tracks = await createLocalTracks({
-          audio: true,
-          video: true,
-        });
-        
+        const tracks = await createLocalTracks({ audio: true, video: true });
         for (const track of tracks) {
-          if (track.kind === 'video') {
-            await room.localParticipant.publishTrack(track);
-          } else if (track.kind === 'audio') {
-            await room.localParticipant.publishTrack(track);
-          }
+          await room.localParticipant.publishTrack(track);
         }
-
         setIsCameraEnabled(true);
         setIsMicEnabled(true);
       } catch (err) {
-        console.error('Failed to get local tracks:');
+        console.error('Failed to get local tracks:', err);
         setIsCameraEnabled(false);
         setIsMicEnabled(false);
       }
     }
-
     requestLocalTracks();
   }, [room, isConnected]);
 
@@ -72,8 +40,8 @@ export function VideoGrid() {
         if (cameraPub && cameraPub.track) {
           local = {
             participant: room.localParticipant,
-            publication: cameraPub,
-            track: cameraPub.track,
+            videoPublication: cameraPub,
+            videoTrack: cameraPub.track,
           };
         }
       }
@@ -83,16 +51,19 @@ export function VideoGrid() {
       if (room.remoteParticipants) {
         room.remoteParticipants.forEach((participant) => {
           const cameraPub = participant.getTrackPublication(Track.Source.Camera);
-          if (cameraPub) {
+          const micPub = participant.getTrackPublication(Track.Source.Microphone);
+          if (cameraPub || micPub) {
             remotes.push({
               participant,
-              publication: cameraPub,
-              track: cameraPub.track || null,
+              videoPublication: cameraPub,
+              videoTrack: cameraPub?.track || null,
+              audioPublication: micPub,
+              audioTrack: micPub?.track || null,
             });
           }
         });
       }
-      
+
       const uniqueRemotes = [];
       const seen = new Set();
       remotes.forEach(r => {
@@ -101,7 +72,6 @@ export function VideoGrid() {
           uniqueRemotes.push(r);
         }
       });
-      
       setRemoteTracks(uniqueRemotes);
     };
 
@@ -138,9 +108,7 @@ export function VideoGrid() {
     };
   }, [room]);
 
-  if (!room) {
-    return null;
-  }
+  if (!room) return null;
 
   const toggleMicrophone = async () => {
     if (room?.localParticipant) {
@@ -148,17 +116,7 @@ export function VideoGrid() {
         await room.localParticipant.setMicrophoneEnabled(!isMicEnabled);
         setIsMicEnabled(!isMicEnabled);
       } catch (err) {
-        console.error('Microphone toggle error:');
-        if (err.name === 'NotAllowedError') {
-          try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            stream.getTracks().forEach(t => t.stop());
-            await room.localParticipant.setMicrophoneEnabled(!isMicEnabled);
-            setIsMicEnabled(!isMicEnabled);
-          } catch (permErr) {
-            alert('Пожалуйста, разрешите доступ к микрофону в настройках браузера');
-          }
-        }
+        console.error('Microphone toggle error:', err);
       }
     }
   };
@@ -169,27 +127,16 @@ export function VideoGrid() {
         await room.localParticipant.setCameraEnabled(!isCameraEnabled);
         setIsCameraEnabled(!isCameraEnabled);
       } catch (err) {
-        console.error('Camera toggle error:');
-        if (err.name === 'NotAllowedError') {
-          try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-            stream.getTracks().forEach(t => t.stop());
-            await room.localParticipant.setCameraEnabled(!isCameraEnabled);
-            setIsCameraEnabled(!isCameraEnabled);
-          } catch (permErr) {
-            alert('Пожалуйста, разрешите доступ к камере в настройках браузера');
-          }
-        }
+        console.error('Camera toggle error:', err);
       }
     }
   };
 
   return (
     <div className="video-grid">
-      {/* Локальное видео */}
       {localVideoTrack ? (
         <VideoTile
-          key={localVideoTrack.participant.sid + localVideoTrack.track.sid}
+          key={localVideoTrack.participant.sid}
           trackRef={localVideoTrack}
           isMain
           isCameraEnabled={isCameraEnabled}
@@ -199,155 +146,94 @@ export function VideoGrid() {
         />
       ) : (
         <div className="video-tile video-tile-main video-placeholder-tile">
-          <div className="placeholder-content">
-            <FaVideoSlash />
-            <span>Нет камеры</span>
-          </div>
-          {/* Контролы для локального участника */}
+          <div className="placeholder-content"><FaVideoSlash /><span>Нет камеры</span></div>
           <div className="placeholder-controls">
-            <button
-              className={`control-btn ${!isMicEnabled ? 'muted' : ''}`}
-              onClick={toggleMicrophone}
-              title={isMicEnabled ? 'Выключить микрофон' : 'Включить микрофон'}
-            >
+            <button className={`control-btn ${!isMicEnabled ? 'muted' : ''}`} onClick={toggleMicrophone} title={isMicEnabled ? 'Выключить микрофон' : 'Включить микрофон'}>
               {isMicEnabled ? <FaMicrophone /> : <FaMicrophoneSlash />}
             </button>
-            <button
-              className={`control-btn ${!isCameraEnabled ? 'off' : ''}`}
-              onClick={toggleCamera}
-              title={isCameraEnabled ? 'Выключить камеру' : 'Включить камеру'}
-            >
+            <button className={`control-btn ${!isCameraEnabled ? 'off' : ''}`} onClick={toggleCamera} title={isCameraEnabled ? 'Выключить камеру' : 'Включить камеру'}>
               {isCameraEnabled ? <FaVideo /> : <FaVideoSlash />}
             </button>
           </div>
         </div>
       )}
 
-      {/* Удалённые участники */}
-      {remoteTracks.filter(tr => tr.track?.kind === 'video').length > 0 && (
+      {remoteTracks.length > 0 && (
         <div className="remote-videos">
-          {remoteTracks.filter(tr => tr.track?.kind === 'video').map((trackRef) => (
-            <VideoTile
-              key={trackRef.participant.sid + trackRef.track.sid}
-              trackRef={trackRef}
-            />
+          {remoteTracks.map((trackRef) => (
+            <VideoTile key={trackRef.participant.sid} trackRef={trackRef} />
           ))}
         </div>
       )}
     </div>
-  )
+  );
 }
 
 function VideoTile({ trackRef, isMain, isCameraEnabled, isMicEnabled, onToggleCamera, onToggleMicrophone }) {
-  const { participant, publication, track } = trackRef;
+  const { participant, videoPublication, videoTrack, audioPublication, audioTrack } = trackRef;
   const isLocal = participant.isLocal;
-
-  const getUsernameFromMetadata = (p) => {
-    try {
-      if (p?.metadata) {
-        const meta = typeof p.metadata === 'string'
-          ? JSON.parse(p.metadata)
-          : p.metadata;
-        return meta.username || p.identity || 'Unknown';
-      }
-    } catch (e) {
-      console.warn('Failed to parse metadata:', e);
-    }
-    return p?.identity || 'Unknown';
-  };
-
-  const username = isLocal ? 'Вы' : getUsernameFromMetadata(participant);
   const videoRef = React.useRef(null);
   const audioRef = React.useRef(null);
-  const isVideoTrack = track?.kind === 'video';
-  const isAudioTrack = track?.kind === 'audio';
-  const isVideoMuted = publication?.isMuted ?? false;
-  
-  const [isAudioMuted, setIsAudioMuted] = useState(false);
+  const [isAudioMuted, setIsAudioMuted] = useState(audioPublication?.isMuted ?? false);
+  const [isVideoMuted, setIsVideoMuted] = useState(videoPublication?.isMuted ?? false);
+
+  const username = (() => {
+    if (isLocal) return 'Вы';
+    try {
+      if (participant?.metadata) {
+        const meta = typeof participant.metadata === 'string' ? JSON.parse(participant.metadata) : participant.metadata;
+        return meta.username || participant.identity || 'Unknown';
+      }
+    } catch (e) {}
+    return participant?.identity || 'Unknown';
+  })();
 
   useEffect(() => {
-    if (track) {
-      if (isVideoTrack && videoRef.current && !isVideoMuted) {
-        track.attach(videoRef.current);
-      }
-      if (isAudioTrack && audioRef.current) {
-        track.attach(audioRef.current);
-      }
+    if (videoTrack && videoRef.current && !isVideoMuted) {
+      videoTrack.attach(videoRef.current);
     }
-
+    if (audioTrack && audioRef.current) {
+      audioTrack.attach(audioRef.current);
+    }
     return () => {
-      if (track) {
-        track.detach();
-      }
+      if (videoTrack) videoTrack.detach();
+      if (audioTrack) audioTrack.detach();
     };
-  }, [track, isVideoMuted, isVideoTrack, isAudioTrack]);
+  }, [videoTrack, audioTrack, isVideoMuted]);
 
   useEffect(() => {
     if (!participant) return;
-
-    const updateAudioStatus = () => {
-      const audioPub = participant.getTrackPublication(Track.Source.Microphone);
-      setIsAudioMuted(audioPub?.isMuted ?? false);
+    const updateMute = () => {
+      const micPub = participant.getTrackPublication(Track.Source.Microphone);
+      setIsAudioMuted(micPub?.isMuted ?? false);
+      const camPub = participant.getTrackPublication(Track.Source.Camera);
+      setIsVideoMuted(camPub?.isMuted ?? false);
     };
-
-    updateAudioStatus();
-
-    participant.on('trackMuted', updateAudioStatus);
-    participant.on('trackUnmuted', updateAudioStatus);
-
+    updateMute();
+    participant.on('trackMuted', updateMute);
+    participant.on('trackUnmuted', updateMute);
     return () => {
-      participant.off('trackMuted', updateAudioStatus);
-      participant.off('trackUnmuted', updateAudioStatus);
+      participant.off('trackMuted', updateMute);
+      participant.off('trackUnmuted', updateMute);
     };
   }, [participant]);
 
-  const handleToggleMicrophone = () => {
-    if (onToggleMicrophone) {
-      onToggleMicrophone();
-    }
-  };
-
-  const handleToggleCamera = () => {
-    if (onToggleCamera) {
-      onToggleCamera();
-    }
-  };
-
   return (
     <div className={`video-tile ${isMain ? 'video-tile-main' : ''}`}>
-      {isVideoTrack ? (
-        !isVideoMuted ? (
-          <video ref={videoRef} autoPlay muted={isLocal} playsInline />
-        ) : (
-          <div className="video-off-placeholder">
-            <FaVideoSlash />
-          </div>
-        )
+      {videoTrack && !isVideoMuted ? (
+        <video ref={videoRef} autoPlay muted={isLocal} playsInline />
       ) : (
-        <audio ref={audioRef} autoPlay muted={isLocal} />
+        <div className="video-off-placeholder"><FaVideoSlash /></div>
       )}
-
-      {/* Overlay с именем и контролами */}
+      {audioTrack && <audio ref={audioRef} autoPlay playsInline />}
       <div className="video-overlay">
-        <span className="video-name">
-          {isLocal ? 'Вы' : username}
-        </span>
-
-        {/* Контролы только для локального участника */}
-        {isLocal && (
+        <span className="video-name">{username}</span>
+        {isMain && (
           <div className="video-controls">
-            <button
-              className={`control-btn ${isAudioMuted ? 'muted' : ''}`}
-              onClick={handleToggleMicrophone}
-              title={isAudioMuted ? 'Включить микрофон' : 'Выключить микрофон'}
-            >
+            <button className={`control-btn ${isAudioMuted ? 'muted' : ''}`} onClick={onToggleMicrophone} title={isAudioMuted ? 'Включить микрофон' : 'Выключить микрофон'}>
               {isAudioMuted ? <FaMicrophoneSlash /> : <FaMicrophone />}
             </button>
-            <button
-              className={`control-btn ${isVideoMuted ? 'off' : ''}`}
-              onClick={handleToggleCamera}
-              title={isVideoMuted ? 'Включить камеру' : 'Выключить камеру'}
-            >
+            <button className={`control-btn ${isVideoMuted ? 'off' : ''}`} onClick={onToggleCamera} title={isVideoMuted ? 'Включить камеру' : 'Выключить камеру'}>
               {isVideoMuted ? <FaVideoSlash /> : <FaVideo />}
             </button>
           </div>

@@ -48,7 +48,7 @@ services:
       - "7882:7882/udp"
     volumes:
       - ./livekit-config.yaml:/app/config.yaml:ro
-    command: --config /app/config.yaml --node-ip 192.168.0.109
+    command: --config /app/config.yaml --node-ip 192.168.1.166
     networks:
       - gazebo_network
 
@@ -68,8 +68,8 @@ services:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
       S3_ENDPOINT_URL: http://minio:9000
-      S3_PUBLIC_URL: https://192.168.0.109/minio
-      LIVEKIT_URL: wss://192.168.0.109
+      S3_PUBLIC_URL: https://192.168.1.166/minio
+      LIVEKIT_URL: wss://192.168.1.166
       LIVEKIT_API_KEY: ${LIVEKIT_API_KEY}
       LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
@@ -88,11 +88,11 @@ services:
       context: ../frontend
       dockerfile: Dockerfile
       args:
-        VITE_API_URL: http://192.168.0.109/api
+        VITE_API_URL: http://192.168.1.166/api
     image: gazebo_frontend:latest
     container_name: gazebo_frontend
     environment:
-      - VITE_API_URL=http://192.168.0.109/api
+      - VITE_API_URL=http://192.168.1.166/api
     depends_on:
       - backend
     restart: unless-stopped

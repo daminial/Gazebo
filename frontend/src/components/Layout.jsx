@@ -87,7 +87,7 @@ export default function Layout() {
       </main>
 
       <footer className="footer">
-        <p>&copy; 2026 Gazebo. All rights reserved.</p>
+        <p>&copy; 2026 Meetgazebo</p>
       </footer>
     </div>
   )

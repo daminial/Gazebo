@@ -225,56 +225,7 @@
 }
 
 /* Buttons */
-.btn {
-  padding: 8px 16px;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: all 0.2s;
-}
 
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.btn-primary {
-  background: #1976d2;
-  color: white;
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: #1565c0;
-}
-
-.btn-secondary {
-  background: #e0e0e0;
-  color: #333;
-}
-
-.btn-secondary:hover:not(:disabled) {
-  background: #ccc;
-}
-
-.btn-icon {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 16px;
-  padding: 4px;
-  border-radius: 4px;
-  transition: all 0.2s;
-}
-
-.btn-icon:hover:not(:disabled) {
-  background: rgba(0,0,0,0.1);
-}
-
-.btn-icon:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
 
 /* Modal */
 .modal-overlay {

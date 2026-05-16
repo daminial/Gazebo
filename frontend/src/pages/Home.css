@@ -43,6 +43,160 @@
   display: block;
 }
 
+/* Map card clickable */
+.map-card-clickable {
+  cursor: pointer;
+  position: relative;
+}
+
+.map-card-clickable:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+}
+
+.map-rating-preview {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  background: rgba(0, 0, 0, 0.7);
+  color: #FFD700;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.star-icon {
+  width: 14px;
+  height: 14px;
+}
+
+/* Modal Overlay */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal-content {
+  background: #FEF3DF;
+  border-radius: 16px;
+  padding: 24px;
+  max-width: 500px;
+  width: 90%;
+  position: relative;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #666;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: opacity 0.2s;
+}
+
+.modal-close:hover {
+  opacity: 0.7;
+}
+
+.modal-image {
+  width: 100%;
+  height: 250px;
+  object-fit: cover;
+  border-radius: 12px;
+  margin-bottom: 16px;
+}
+
+.modal-title {
+  text-align: center;
+  font-size: 20px;
+  color: #333;
+  margin: 0 0 20px 0;
+}
+
+.rating-section {
+  text-align: center;
+}
+
+.rating-label {
+  font-size: 16px;
+  color: #5A6B3A;
+  margin: 0 0 12px 0;
+  font-weight: 500;
+}
+
+.stars-container {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.star-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  transition: transform 0.2s;
+}
+
+.star-btn:hover {
+  transform: scale(1.2);
+}
+
+.star-btn .star-icon {
+  width: 28px;
+  height: 28px;
+  color: #D4C4A8;
+  transition: color 0.2s;
+}
+
+.star-btn.active .star-icon {
+  color: #FFD700;
+}
+
+.current-rating {
+  font-size: 14px;
+  color: #666;
+  margin: 0;
+}
+
 /* Placeholder Page */
 .placeholder-page {
   padding: 2rem;
