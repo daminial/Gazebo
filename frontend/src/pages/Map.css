@@ -681,3 +681,26 @@
   margin-bottom: 12px;
   color: #333;
 }
+
+.btn-rate-submit {
+  margin-top: 16px;
+  padding: 10px 24px;
+  background: #5f6c37;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.btn-rate-submit:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.btn-rate-submit:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}

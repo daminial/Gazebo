@@ -1,4 +1,3 @@
-# service.py
 from typing import Optional, List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import func, select, or_, and_
@@ -91,6 +90,16 @@ class AuthService:
             raise EmailNotVerifiedException()
         
         return user
+    
+    async def delete_user_account(self, user: User) -> None:
+        """Полное удаление аккаунта пользователя"""
+        if user.avatar_id:
+            avatar = await self.db.get(Image, user.avatar_id)
+            if avatar:
+                await self.db.delete(avatar)
+        
+        await self.db.delete(user)
+        await self.db.flush()
     
     async def oauth_login(self, user_info: dict) -> User:
         user = await self._find_user_by_email_or_oauth(
@@ -185,6 +194,23 @@ class AuthService:
         await self.db.flush()
         
         user.avatar_id = image.id
+        return user
+    
+    async def update_username(self, user: User, new_username: str) -> User:
+        """Обновить имя пользователя"""
+        if len(new_username) < 3:
+            raise ValueError("Имя пользователя должно быть не менее 3 символов")    
+        
+        if new_username.strip() == user.username.strip():
+            return user
+        
+        if await self._username_exists(new_username):
+            raise ValueError("Это имя пользователя уже занято")
+        
+        user.username = new_username
+        await self.db.flush()
+        await self.db.refresh(user)  
+        
         return user
     
     async def delete_avatar(self, user: User, s3_client: S3Client) -> User:

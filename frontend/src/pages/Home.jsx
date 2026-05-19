@@ -8,6 +8,8 @@ export default function Home() {
   const [topMaps, setTopMaps] = useState([])
   const [loading, setLoading] = useState(true)
 
+  const isAuthenticated = !!localStorage.getItem('access_token')
+
   useEffect(() => {
     const fetchTopMaps = async () => {
       try {
@@ -27,9 +29,16 @@ export default function Home() {
     fetchTopMaps()
   }, [])
 
+  const handleMapClick = () => {
+    if (isAuthenticated) {
+      navigate('/maps')
+    } else {
+      navigate('/register')
+    }
+  }
+
   return (
     <div className="home">
-      {/* Companies Section */}
       <section className="section">
         <h2 className="section-title">Компании</h2>
         <div className="cards-grid">
@@ -45,7 +54,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Top Cards Section */}
       <section className="section">
         <h2 className="section-title">Топ карт</h2>
         <div className="cards-grid">
@@ -56,16 +64,13 @@ export default function Home() {
               <div
                 key={map.id}
                 className="card map-card-clickable"
-                onClick={() => navigate('/maps')}
+                onClick={handleMapClick}
               >
                 <img
                   src={map.image_url || map.preview_url || 'https://placehold.co/400x180/D2B48C/8B4513?text=Map'}
                   alt={map.name || 'Карта'}
                   className="card-image"
                 />
-                <div className="map-rating-preview">
-                  ★ {map.rating || 0}
-                </div>
               </div>
             ))
           ) : (
@@ -74,7 +79,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Best Albums Section */}
       <section className="section">
         <h2 className="section-title">Лучшие альбомы</h2>
         <div className="cards-grid">

@@ -1,3 +1,5 @@
+from typing import Optional, List, BinaryIO
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
@@ -21,6 +23,10 @@ class MapTemplateService:
     def __init__(self, db: AsyncSession, media_service: Optional[MediaService] = None):
         self.db = db
         self.media_service = media_service
+
+    async def is_moderator(self, user) -> bool:
+        """Проверить, является ли пользователь модератором"""
+        return user.role in ["moderator", "admin"] or user.is_superuser
 
     async def to_response(
         self, 
@@ -241,14 +247,14 @@ class MapTemplateService:
         await self.db.refresh(template)
         return template
 
-    async def delete_template(self, template_id: int, user_id: UUID):
+    async def delete_template(self, template_id: int, user_id: UUID, is_moderator: bool = False):
         """Удалить шаблон"""
         template = await self.get_template(template_id)
         if not isinstance(template, MapTemplate):
             raise TemplateNotFoundError(template_id)
 
-        if template.owner_id != user_id:
-            raise TemplatePermissionError("You can only delete your own templates")
+        if not is_moderator and template.owner_id != user_id:
+            raise TemplatePermissionError("Вы можете удалять только свои шаблоны")
 
         await self.db.delete(template)
         await self.db.flush()

@@ -101,15 +101,38 @@ export function AuthProvider({ children }) {
   }
 
   const uploadAvatar = async (file) => {
-    const { data: updatedUser } = await authAPI.uploadAvatar(file)
-    setUser(updatedUser)
-    return updatedUser
+    try {
+      const { data: updatedUser } = await authAPI.uploadAvatar(file)
+      setUser(updatedUser)
+      return updatedUser
+    } catch (error) {
+      console.error('Upload avatar error:', error)
+      throw error
+    }
   }
 
   const deleteAvatar = async () => {
-    const { data: updatedUser } = await authAPI.deleteAvatar()
-    setUser(updatedUser)
-    return updatedUser
+    try {
+      await authAPI.deleteAvatar()
+      const { data: updatedUser } = await authAPI.getMe()
+      setUser(updatedUser)
+      return updatedUser
+    } catch (error) {
+      console.error('Delete avatar error:', error)
+      throw error
+    }
+  }
+
+  const deleteAccount = async () => {
+    try {
+      await authAPI.deleteAccount()
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('refresh_token')
+      setUser(null)
+    } catch (error) {
+      console.error('Delete account error:', error)
+      throw error
+    }
   }
 
   const getToken = () => {
@@ -120,11 +143,24 @@ export function AuthProvider({ children }) {
     return !!user || !!localStorage.getItem('access_token')
   }, [user])
 
+  const isModerator = useMemo(() => {
+    return user?.role === 'moderator' || user?.role === 'admin'
+  }, [user])
+
+  const isAdmin = useMemo(() => {
+    return user?.role === 'admin'
+  }, [user])
+
+  const canDeleteContent = useMemo(() => {
+    return isModerator || isAdmin
+  }, [isModerator, isAdmin])
+
   return (
-    <AuthContext.Provider value={{ 
-      user, loading, login, register, verifyEmail, 
-      refreshToken, logout, updateUser, uploadAvatar, 
-      deleteAvatar, getToken, isAuthenticated 
+    <AuthContext.Provider value={{
+      user, setUser, loading, login, register, verifyEmail,
+      refreshToken, logout, updateUser, uploadAvatar,
+      deleteAvatar, deleteAccount, getToken, isAuthenticated,
+      isModerator, isAdmin, canDeleteContent
     }}>
       {children}
     </AuthContext.Provider>

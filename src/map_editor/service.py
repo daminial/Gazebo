@@ -441,10 +441,13 @@ class MapEditorService:
         await self.db.flush()
         return pack
 
-    async def delete_pack(self, pack_id: int, user_id: UUID):
+    async def delete_pack(self, pack_id: int, user_id: UUID, is_moderator: bool = False):
         pack = await self.db.get(AssetPack, pack_id)
-        if not pack or pack.owner_id != user_id:
-            raise PermissionError("Access denied")
+        if is_moderator:
+            if not pack.is_public:
+                raise PermissionError("Модератор может удалять только публичные паки ассетов")
+        elif pack.owner_id != user_id:
+            raise PermissionError("Нет доступа")
         
         await self.db.delete(pack)
         await self.db.flush()

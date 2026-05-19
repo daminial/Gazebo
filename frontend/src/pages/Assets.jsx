@@ -3,10 +3,8 @@ import { useAuth } from '../context/AuthContext'
 import { mapEditorAPI, mediaAPI } from '../api'
 import { 
   FiFolder, 
-  FiPlus, 
   FiEdit2, 
   FiTrash2, 
-  FiArrowLeft, 
   FiImage, 
   FiX,
   FiGrid,
@@ -23,13 +21,11 @@ export default function Assets() {
   const [loading, setLoading] = useState(false)
   const [tab, setTab] = useState('packs')
 
-  // Форма набора
   const [showPackForm, setShowPackForm] = useState(false)
   const [editingPack, setEditingPack] = useState(null)
   const [packName, setPackName] = useState('')
   const [packDescription, setPackDescription] = useState('')
 
-  // Форма объекта
   const [showAssetForm, setShowAssetForm] = useState(false)
   const [assetName, setAssetName] = useState('')
   const [assetCategory, setAssetCategory] = useState('Строение')
@@ -41,11 +37,14 @@ export default function Assets() {
   const [uploadProgress, setUploadProgress] = useState(0)
   const [uploadError, setUploadError] = useState(null)
 
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deletingPack, setDeletingPack] = useState(null)
+  const [deletingAsset, setDeletingAsset] = useState(null)
+
   const fileInputRef = useRef()
 
   const categories = ['Строение', 'Стена', 'Растение', 'Декорация', 'Другое']
 
-  // Мемоизированная группировка ассетов по категориям
   const groupedAssets = useMemo(() => {
     return assets.reduce((acc, asset) => {
       const cat = asset.category || 'Другое'
@@ -55,7 +54,6 @@ export default function Assets() {
     }, {})
   }, [assets])
 
-  // Загрузка наборов
   const loadPacks = useCallback(async () => {
     setLoading(true)
     setUploadError(null)
@@ -69,8 +67,6 @@ export default function Assets() {
       setLoading(false)
     }
   }, [])
-
-  // Загрузка ассетов выбранного набора
   const loadAssets = useCallback(async (packId) => {
     if (!packId) return
     
@@ -78,29 +74,21 @@ export default function Assets() {
     setUploadError(null)
     try {
       const { data } = await mapEditorAPI.getPackAssets(packId)
-      // Проверяем, что все еще выбран тот же набор
-      setAssets(prevAssets => {
-        if (selectedPack?.id === packId) {
-          return data
-        }
-        return prevAssets
-      })
+      setAssets(data)
     } catch (err) {
       console.error('Ошибка загрузки объектов:', err)
       setUploadError('Не удалось загрузить объекты. Попробуйте позже.')
     } finally {
       setLoading(false)
     }
-  }, [selectedPack?.id])
+  }, [])
 
-  // Выбор набора
   const selectPack = useCallback(async (pack) => {
     setSelectedPack(pack)
     setTab('assets')
     await loadAssets(pack.id)
   }, [loadAssets])
 
-  // Открыть форму создания набора
   const openCreatePack = useCallback(() => {
     setEditingPack(null)
     setPackName('')
@@ -108,7 +96,6 @@ export default function Assets() {
     setShowPackForm(true)
   }, [])
 
-  // Открыть форму редактирования набора
   const openEditPack = useCallback((pack) => {
     setEditingPack(pack)
     setPackName(pack.name)
@@ -116,7 +103,6 @@ export default function Assets() {
     setShowPackForm(true)
   }, [])
 
-  // Сохранение набора
   const savePack = useCallback(async () => {
     if (!packName.trim()) {
       setUploadError('Введите название набора')
@@ -145,26 +131,32 @@ export default function Assets() {
     }
   }, [packName, packDescription, editingPack, loadPacks])
 
-  // Удаление набора
-  const deletePack = useCallback(async (packId) => {
-    if (!confirm('Вы уверены? Это действие удалит набор и все объекты внутри него.')) return
+  const requestDeletePack = useCallback((pack) => {
+    setDeletingPack(pack)
+    setDeletingAsset(null)
+    setShowDeleteModal(true)
+  }, [])
+
+  const confirmDeletePack = useCallback(async () => {
+    if (!deletingPack) return
     
     setUploadError(null)
     try {
-      await mapEditorAPI.deletePack(packId)
-      if (selectedPack?.id === packId) {
+      await mapEditorAPI.deletePack(deletingPack.id)
+      if (selectedPack?.id === deletingPack.id) {
         setSelectedPack(null)
         setAssets([])
         setTab('packs')
       }
+      setShowDeleteModal(false)
+      setDeletingPack(null)
       await loadPacks()
     } catch (err) {
       console.error('Ошибка удаления набора:', err)
       setUploadError('Не удалось удалить набор')
     }
-  }, [selectedPack?.id, loadPacks])
+  }, [deletingPack, selectedPack?.id, loadPacks])
 
-  // Открыть форму добавления ассета
   const openAddAsset = useCallback(() => {
     setAssetName('')
     setAssetCategory('Строение')
@@ -176,12 +168,10 @@ export default function Assets() {
     setShowAssetForm(true)
   }, [])
 
-  // Обработка выбора изображения
   const handleImageSelect = useCallback((e) => {
     const file = e.target.files[0]
     if (!file) return
     
-    // Валидация файла
     if (!file.type.startsWith('image/')) {
       setUploadError('Пожалуйста, выберите изображение')
       return
@@ -195,7 +185,6 @@ export default function Assets() {
     setUploadError(null)
     setAssetImage(file)
     
-    // Очищаем предыдущий preview URL если есть
     if (assetPreview && assetPreview.startsWith('blob:')) {
       URL.revokeObjectURL(assetPreview)
     }
@@ -206,7 +195,6 @@ export default function Assets() {
     reader.readAsDataURL(file)
   }, [assetPreview])
 
-  // Очистка preview URL при размонтировании
   useEffect(() => {
     return () => {
       if (assetPreview && assetPreview.startsWith('blob:')) {
@@ -215,7 +203,6 @@ export default function Assets() {
     }
   }, [assetPreview])
 
-  // Загрузка ассета на сервер
   const uploadAsset = useCallback(async () => {
     if (!assetImage) {
       setUploadError('Выберите изображение')
@@ -235,7 +222,6 @@ export default function Assets() {
       const formData = new FormData()
       formData.append('file', assetImage)
 
-      // Симуляция прогресса загрузки
       const progressInterval = setInterval(() => {
         setUploadProgress(prev => Math.min(prev + 10, 90))
       }, 200)
@@ -267,21 +253,27 @@ export default function Assets() {
     }
   }, [assetImage, assetName, assetWidth, assetHeight, assetCategory, selectedPack?.id, loadAssets])
 
-  // Удаление ассета
-  const deleteAsset = useCallback(async (assetId) => {
-    if (!confirm('Удалить этот объект?')) return
+  const requestDeleteAsset = useCallback((asset) => {
+    setDeletingAsset(asset)
+    setDeletingPack(null)
+    setShowDeleteModal(true)
+  }, [])
+
+  const confirmDeleteAsset = useCallback(async () => {
+    if (!deletingAsset) return
     
     setUploadError(null)
     try {
-      await mapEditorAPI.deleteAsset(assetId)
+      await mapEditorAPI.deleteAsset(deletingAsset.id)
+      setShowDeleteModal(false)
+      setDeletingAsset(null)
       await loadAssets(selectedPack.id)
     } catch (err) {
       console.error('Ошибка удаления объекта:', err)
       setUploadError('Не удалось удалить объект')
     }
-  }, [selectedPack?.id, loadAssets])
+  }, [deletingAsset, selectedPack?.id, loadAssets])
 
-  // Загрузка наборов при монтировании
   useEffect(() => {
     loadPacks()
   }, [loadPacks])
@@ -296,31 +288,30 @@ export default function Assets() {
         <h1>Библиотека объектов</h1>
         <div className="assets-header-actions">
           {tab === 'packs' && (
-            <button className="btn btn-primary" onClick={openCreatePack}>
-              <FiPlus /> Создать набор
+            <button className="btn-create" onClick={openCreatePack}>
+              Создать набор
             </button>
           )}
           {tab === 'assets' && selectedPack && (
             <>
               <button 
-                className="btn btn-secondary" 
+                className="btn-secondary" 
                 onClick={() => { 
                   setTab('packs')
                   setSelectedPack(null)
                   setAssets([])
                 }}
               >
-                <FiArrowLeft /> Назад к наборам
+                Назад к наборам
               </button>
-              <button className="btn btn-primary" onClick={openAddAsset}>
-                <FiPlus /> Добавить объект
+              <button className="btn-primary" onClick={openAddAsset}>
+                Добавить объект
               </button>
             </>
           )}
         </div>
       </div>
 
-      {/* Сообщения об ошибках */}
       {uploadError && (
         <div className="error-message">
           <FiAlertCircle />
@@ -331,7 +322,6 @@ export default function Assets() {
         </div>
       )}
 
-      {/* Вкладки */}
       <div className="assets-tabs">
         <button
           className={`assets-tab ${tab === 'packs' ? 'active' : ''}`}
@@ -353,15 +343,14 @@ export default function Assets() {
         </button>
       </div>
 
-      {/* Сетка наборов */}
       {tab === 'packs' && (
         <div className="packs-grid">
           {packs.length === 0 && (
             <div className="empty-state">
               <FiPackage size={48} />
               <p>У вас пока нет наборов</p>
-              <button className="btn btn-primary" onClick={openCreatePack}>
-                <FiPlus /> Создать первый набор
+              <button className="btn-primary" onClick={openCreatePack}>
+                Создать первый набор
               </button>
             </div>
           )}
@@ -397,7 +386,7 @@ export default function Assets() {
                   title="Удалить" 
                   onClick={(e) => { 
                     e.stopPropagation()
-                    deletePack(pack.id)
+                    requestDeletePack(pack)
                   }}
                 >
                   <FiTrash2 />
@@ -408,7 +397,6 @@ export default function Assets() {
         </div>
       )}
 
-      {/* Содержимое набора: ассеты по категориям */}
       {tab === 'assets' && selectedPack && (
         <div className="assets-content">
           {loading && <div className="assets-loading">Загрузка объектов...</div>}
@@ -417,8 +405,8 @@ export default function Assets() {
             <div className="empty-state">
               <FiImage size={48} />
               <p>В наборе «{selectedPack.name}» пока нет объектов</p>
-              <button className="btn btn-primary" onClick={openAddAsset}>
-                <FiPlus /> Добавить первый объект
+              <button className="btn-primary" onClick={openAddAsset}>
+                Добавить первый объект
               </button>
             </div>
           )}
@@ -455,7 +443,7 @@ export default function Assets() {
                     </div>
                     <button 
                       className="btn-icon asset-delete" 
-                      onClick={() => deleteAsset(asset.id)}
+                      onClick={() => requestDeleteAsset(asset)}
                       title="Удалить"
                     >
                       <FiTrash2 />
@@ -468,45 +456,45 @@ export default function Assets() {
         </div>
       )}
 
-      {/* Модальное окно: создание/редактирование набора */}
       {showPackForm && (
-        <div className="modal-overlay" onClick={() => setShowPackForm(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>{editingPack ? 'Редактирование набора' : 'Создание нового набора'}</h2>
-              <button className="btn-icon" onClick={() => setShowPackForm(false)}>
-                <FiX />
-              </button>
+        <div className="create-overlay" onClick={() => setShowPackForm(false)}>
+          <div className="create-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="create-modal-header">
+              <h3>{editingPack ? 'Редактирование набора' : 'Создание нового набора'}</h3>
+              <button className="create-modal-close" onClick={() => setShowPackForm(false)}>✕</button>
             </div>
-            <div className="modal-body">
-              <label className="form-label">
-                Название набора *
-                <input
-                  type="text"
-                  className="form-input"
-                  value={packName}
-                  onChange={(e) => setPackName(e.target.value)}
-                  placeholder="Например: Природа, Городские объекты..."
-                  autoFocus
-                />
-              </label>
-              <label className="form-label">
-                Описание
-                <textarea
-                  className="form-input"
-                  value={packDescription}
-                  onChange={(e) => setPackDescription(e.target.value)}
-                  placeholder="Краткое описание набора (необязательно)"
-                  rows={3}
-                />
-              </label>
+            <div className="create-modal-body">
+              <div className="create-form">
+                <label className="create-label">
+                  Название набора
+                  <input
+                    type="text"
+                    className="create-input"
+                    value={packName}
+                    onChange={(e) => setPackName(e.target.value)}
+                    placeholder="Например: Природа, Городские объекты..."
+                    autoFocus
+                  />
+                </label>
+                <label className="create-label">
+                  Описание
+                  <textarea
+                    className="create-input"
+                    value={packDescription}
+                    onChange={(e) => setPackDescription(e.target.value)}
+                    placeholder="Краткое описание набора (необязательно)"
+                    rows={3}
+                    style={{ resize: 'vertical' }}
+                  />
+                </label>
+              </div>
             </div>
-            <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={() => setShowPackForm(false)}>
+            <div className="create-modal-footer">
+              <button className="btn-secondary" onClick={() => setShowPackForm(false)}>
                 Отмена
               </button>
               <button 
-                className="btn btn-primary" 
+                className="btn-primary" 
                 onClick={savePack} 
                 disabled={!packName.trim()}
               >
@@ -516,122 +504,157 @@ export default function Assets() {
           </div>
         </div>
       )}
-
-      {/* Модальное окно: добавление ассета */}
       {showAssetForm && (
-        <div className="modal-overlay" onClick={() => !uploading && setShowAssetForm(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>Добавление объекта в набор «{selectedPack?.name}»</h2>
+        <div className="create-overlay" onClick={() => !uploading && setShowAssetForm(false)}>
+          <div className="create-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="create-modal-header">
+              <h3>Добавление объекта в набор «{selectedPack?.name}»</h3>
               <button 
-                className="btn-icon" 
+                className="create-modal-close" 
                 onClick={() => setShowAssetForm(false)} 
                 disabled={uploading}
               >
-                <FiX />
+                ✕
               </button>
             </div>
-            <div className="modal-body">
-              <div
-                className={`image-upload-area ${assetPreview ? 'has-preview' : ''}`}
-                onClick={() => !uploading && fileInputRef.current?.click()}
-                style={{ cursor: uploading ? 'not-allowed' : 'pointer' }}
-              >
-                {assetPreview ? (
-                  <img src={assetPreview} alt="Предпросмотр" className="image-preview" />
-                ) : (
-                  <div className="upload-placeholder">
-                    <FiImage size={48} />
-                    <p>Нажмите, чтобы выбрать изображение</p>
-                    <small>PNG, JPG, GIF до 10 МБ</small>
+            <div className="create-modal-body">
+              <div className="create-form">
+                <div
+                  className={`image-upload-area ${assetPreview ? 'has-preview' : ''}`}
+                  onClick={() => !uploading && fileInputRef.current?.click()}
+                  style={{ cursor: uploading ? 'not-allowed' : 'pointer' }}
+                >
+                  {assetPreview ? (
+                    <img src={assetPreview} alt="Предпросмотр" className="image-preview" />
+                  ) : (
+                    <div className="upload-placeholder">
+                      <FiImage size={48} />
+                      <p>Нажмите, чтобы выбрать изображение</p>
+                      <small>PNG, JPG, GIF до 10 МБ</small>
+                    </div>
+                  )}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    hidden
+                    onChange={handleImageSelect}
+                    disabled={uploading}
+                  />
+                </div>
+
+                <label className="create-label">
+                  Название объекта
+                  <input
+                    type="text"
+                    className="create-input"
+                    value={assetName}
+                    onChange={(e) => setAssetName(e.target.value)}
+                    placeholder="Например: Дуб, Кирпичная стена..."
+                    disabled={uploading}
+                  />
+                </label>
+
+                <label className="create-label">
+                  Категория
+                  <select
+                    className="create-select"
+                    value={assetCategory}
+                    onChange={(e) => setAssetCategory(e.target.value)}
+                    disabled={uploading}
+                  >
+                    {categories.map((cat) => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <div className="create-row">
+                  <label className="create-label">
+                    Ширина (px)
+                    <input
+                      type="number"
+                      className="create-input"
+                      value={assetWidth}
+                      onChange={(e) => setAssetWidth(Math.max(1, Number(e.target.value)))}
+                      min="1"
+                      max="1000"
+                      disabled={uploading}
+                    />
+                  </label>
+                  <label className="create-label">
+                    Высота (px)
+                    <input
+                      type="number"
+                      className="create-input"
+                      value={assetHeight}
+                      onChange={(e) => setAssetHeight(Math.max(1, Number(e.target.value)))}
+                      min="1"
+                      max="1000"
+                      disabled={uploading}
+                    />
+                  </label>
+                </div>
+
+                {uploading && (
+                  <div className="upload-progress">
+                    <div className="progress-bar">
+                      <div className="progress-fill" style={{ width: `${uploadProgress}%` }} />
+                    </div>
+                    <span>Загрузка... {uploadProgress}%</span>
                   </div>
                 )}
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  hidden
-                  onChange={handleImageSelect}
-                  disabled={uploading}
-                />
               </div>
-
-              <label className="form-label">
-                Название объекта *
-                <input
-                  type="text"
-                  className="form-input"
-                  value={assetName}
-                  onChange={(e) => setAssetName(e.target.value)}
-                  placeholder="Например: Дуб, Кирпичная стена..."
-                  disabled={uploading}
-                />
-              </label>
-
-              <label className="form-label">
-                Категория
-                <select
-                  className="form-input"
-                  value={assetCategory}
-                  onChange={(e) => setAssetCategory(e.target.value)}
-                  disabled={uploading}
-                >
-                  {categories.map((cat) => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </select>
-              </label>
-
-              <div className="form-row">
-                <label className="form-label">
-                  Ширина (px)
-                  <input
-                    type="number"
-                    className="form-input"
-                    value={assetWidth}
-                    onChange={(e) => setAssetWidth(Math.max(1, Number(e.target.value)))}
-                    min="1"
-                    max="1000"
-                    disabled={uploading}
-                  />
-                </label>
-                <label className="form-label">
-                  Высота (px)
-                  <input
-                    type="number"
-                    className="form-input"
-                    value={assetHeight}
-                    onChange={(e) => setAssetHeight(Math.max(1, Number(e.target.value)))}
-                    min="1"
-                    max="1000"
-                    disabled={uploading}
-                  />
-                </label>
-              </div>
-
-              {uploading && (
-                <div className="upload-progress">
-                  <div className="progress-bar">
-                    <div className="progress-fill" style={{ width: `${uploadProgress}%` }} />
-                  </div>
-                  <span>Загрузка... {uploadProgress}%</span>
-                </div>
-              )}
             </div>
-            <div className="modal-footer">
+            <div className="create-modal-footer">
               <button 
-                className="btn btn-secondary" 
+                className="btn-secondary" 
                 onClick={() => setShowAssetForm(false)} 
                 disabled={uploading}
               >
                 Отмена
               </button>
               <button
-                className="btn btn-primary"
+                className="btn-primary"
                 onClick={uploadAsset}
                 disabled={!assetImage || !assetName.trim() || uploading}
               >
                 {uploading ? 'Загрузка...' : 'Добавить объект'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showDeleteModal && (deletingPack || deletingAsset) && (
+        <div className="create-overlay" onClick={() => setShowDeleteModal(false)}>
+          <div className="create-modal" style={{ maxWidth: 400 }} onClick={(e) => e.stopPropagation()}>
+            <div className="create-modal-header">
+              <h3>{deletingPack ? 'Удалить набор' : 'Удалить объект'}</h3>
+              <button className="create-modal-close" onClick={() => setShowDeleteModal(false)}>✕</button>
+            </div>
+            <div className="create-modal-body">
+              <p style={{ margin: 0, color: '#333', fontSize: 14 }}>
+                {deletingPack ? (
+                  <>
+                    Вы уверены, что хотите удалить набор <strong>«{deletingPack.name}»</strong>? 
+                    Это действие удалит все объекты внутри него.
+                  </>
+                ) : (
+                  <>
+                    Вы уверены, что хотите удалить объект <strong>«{deletingAsset.name}»</strong>?
+                  </>
+                )}
+              </p>
+            </div>
+            <div className="create-modal-footer" style={{ justifyContent: 'flex-end' }}>
+              <button className="btn-secondary" onClick={() => setShowDeleteModal(false)}>
+                Отмена
+              </button>
+              <button
+                className="btn-delete"
+                onClick={deletingPack ? confirmDeletePack : confirmDeleteAsset}
+              >
+                Удалить
               </button>
             </div>
           </div>

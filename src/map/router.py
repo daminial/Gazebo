@@ -68,7 +68,6 @@ async def get_public_templates(
     tag: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
     s3_client: S3Client = Depends(get_s3_client),
-    current_user: User = Depends(get_current_user)
 ):
     """Получить публичные шаблоны карт"""
     template_service = MapTemplateService(db=db, media_service=None)
@@ -219,9 +218,10 @@ async def delete_map_template(
 ):
     """Удалить шаблон карты"""
     template_service = MapTemplateService(db=db, media_service=None)
+    is_moderator = await template_service.is_moderator(current_user)
     
     try:
-        await template_service.delete_template(template_id, current_user.id)
+        await template_service.delete_template(template_id, current_user.id, is_moderator)
     except TemplateNotFoundError:
         raise HTTPException(status_code=404, detail="Template not found")
     except TemplatePermissionError as e:

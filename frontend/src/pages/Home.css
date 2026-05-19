@@ -54,26 +54,6 @@
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
 }
 
-.map-rating-preview {
-  position: absolute;
-  bottom: 8px;
-  right: 8px;
-  background: rgba(0, 0, 0, 0.7);
-  color: #FFD700;
-  padding: 4px 8px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.star-icon {
-  width: 14px;
-  height: 14px;
-}
-
 /* Modal Overlay */
 .modal-overlay {
   position: fixed;

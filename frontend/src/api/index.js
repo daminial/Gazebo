@@ -11,10 +11,25 @@ const api = axios.create({
 
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('access_token')
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
+    const publicEndpoints = [
+      '/map-templates/public',
+      '/auth/login',
+      '/auth/register',
+      '/auth/verify-email',
+      '/auth/refresh'
+    ]
+    
+    const isPublicEndpoint = publicEndpoints.some(endpoint => 
+      config.url?.includes(endpoint)
+    )
+    
+    if (!isPublicEndpoint) {
+      const token = localStorage.getItem('access_token')
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`
+      }
     }
+    
     return config
   },
   (error) => Promise.reject(error)
@@ -33,11 +48,9 @@ api.interceptors.response.use(
           localStorage.setItem('access_token', data.access_token)
           localStorage.setItem('refresh_token', data.refresh_token)
 
-          // Повторяем исходный запрос с новым токеном
           error.config.headers.Authorization = `Bearer ${data.access_token}`
           return api.request(error.config)
         } catch (refreshError) {
-          // Не удалось обновить, выходим
           localStorage.removeItem('access_token')
           localStorage.removeItem('refresh_token')
           window.location.href = '/login'
@@ -57,6 +70,22 @@ export const authAPI = {
   updateMe: (data) => api.put('/auth/me', data),
   refreshToken: (refreshToken) => api.post('/auth/refresh', { refresh_token: refreshToken }),
   searchUsers: (query) => api.get(`/auth/users/search?q=${encodeURIComponent(query)}`),
+  
+  uploadAvatar: (file) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    return api.post('/auth/avatar', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+  },
+  
+  deleteAvatar: () => api.delete('/auth/avatar'),
+
+  updateUsername: (username) => api.patch('/auth/username', { username }),
+  
+  deleteAccount: () => api.delete('/auth/account'),
 }
 
 export const roomsAPI = {
@@ -162,7 +191,7 @@ export const roomsAPI = {
   clearDrawing: (roomId, pageId) => 
     api.delete(`/rooms/${roomId}/pages/${pageId}/drawing`),
 
-   // Аудио
+  // Аудио
   getPlayerState: (roomId) => api.get(`/audio/rooms/${roomId}/player`),
   getAudioTracks: (roomId) => api.get(`/audio/rooms/${roomId}/tracks`),
   addAudioToRoom: (roomId, data) => api.post(`/audio/rooms/${roomId}/tracks`, data),
@@ -217,6 +246,7 @@ export const mapTemplatesAPI = {
   },
   getById: (id) => api.get(`/map-templates/${id}`),
   delete: (id) => api.delete(`/map-templates/${id}`),
+  moderatorDelete: (id) => api.delete(`/map-templates/${id}`),
   rate: (templateId, rating) => api.patch(`/map-templates/${templateId}/rate?rating=${rating}`),
 }
 
@@ -228,12 +258,16 @@ export const mapEditorAPI = {
   updatePack: (id, data) => api.patch(`/map-editor/packs/${id}`, data),
   
   deletePack: (id) => api.delete(`/map-editor/packs/${id}`),
+
+  moderatorDeletePack: (id) => api.delete(`/map-editor/packs/${id}/moderator`),
   
   getPackAssets: (packId) => api.get(`/map-editor/packs/${packId}/assets`),
   
   createAsset: (packId, data) => api.post(`/map-editor/packs/${packId}/assets`, data),
   
   deleteAsset: (id) => api.delete(`/map-editor/assets/${id}`),
+
+  moderatorDeleteAsset: (id) => api.delete(`/map-editor/assets/${id}/moderator`),
 
   createProject: (data) => api.post('/map-editor/projects', data),
   
@@ -276,6 +310,7 @@ export const bestiaryAPI = {
   },
   update: (id, data) => api.put(`/bestiary/templates/${id}`, data),
   delete: (id) => api.delete(`/bestiary/templates/${id}`),
+  moderatorDelete: (id) => api.delete(`/bestiary/templates/${id}/moderator`),
 }
 
 export const mapAPI = {

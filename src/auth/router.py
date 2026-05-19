@@ -1,5 +1,5 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, status, HTTPException, UploadFile, File
+from fastapi import APIRouter, Body, Depends, status, HTTPException, UploadFile, File
 from fastapi.responses import RedirectResponse, StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi.responses import HTMLResponse
@@ -19,7 +19,7 @@ from src.auth.schemas import (
 from src.auth.service import AuthService
 from src.auth.oauth_providers import GitHubProvider, GoogleProvider, VKProvider
 from src.auth.dependencies import (
-    CurrentActiveUser, CurrentModerator, CurrentSuperuser
+    CurrentActiveUser, CurrentModerator, CurrentSuperuser, get_current_user
 )
 
 logger = logging.getLogger(__name__)
@@ -190,6 +190,16 @@ async def oauth_callback(
         """
     )
 
+@router.delete("/account")
+async def delete_account(
+    current_user: CurrentActiveUser,
+    db: AsyncSession = Depends(get_db)
+):
+    """Удаление своего аккаунта"""
+    auth_service = AuthService(db)
+    await auth_service.delete_user_account(current_user)
+    return {"message": "Аккаунт успешно удален"}
+
 
 @router.post("/refresh", response_model=Token)
 async def refresh_token(
@@ -232,6 +242,25 @@ async def upload_avatar(
     auth_service = AuthService(db)
     user = await auth_service.upload_avatar(current_user, file, s3_client)
     return user
+
+@router.patch("/username", response_model=UserInDB)
+async def update_username(
+    current_user: CurrentActiveUser,
+    username: str = Body(..., embed=True),
+    db: AsyncSession = Depends(get_db)
+):
+    """Обновить имя пользователя"""
+    
+    if len(username) < 3:
+        raise HTTPException(status_code=400, detail="Имя пользователя должно быть не менее 3 символов")
+    
+    auth_service = AuthService(db)
+    
+    try:
+        user = await auth_service.update_username(current_user, username)
+        return user
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.delete("/avatar")

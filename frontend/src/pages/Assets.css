@@ -224,9 +224,6 @@
   color: #999;
 }
 
-/* Buttons */
-
-
 /* Modal */
 .modal-overlay {
   position: fixed;
@@ -242,7 +239,7 @@
 }
 
 .modal {
-  background: white;
+  background: #FEF3DF;
   border-radius: 12px;
   width: 90%;
   max-width: 500px;
@@ -283,7 +280,8 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  font-size: 13px;
+  font-size
+: 13px;
   font-weight: 500;
   color: #333;
 }

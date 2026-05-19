@@ -179,9 +179,12 @@ async def get_project_by_template(
 ):
     project = await editor_service.get_project_by_template(template_id)
     if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
-    return await editor_service.to_project_response(project)
-
+        raise HTTPException(status_code=404, detail="Проект не найден")
+    try:
+        return await editor_service.to_project_response(project)
+    except Exception:
+        raise HTTPException(status_code=404, detail="Нельзя редактировать этот шаблон")
+    
 @router.post("/projects/{project_id}/save")
 async def save_project_to_template(
     project_id: int,
@@ -240,7 +243,9 @@ async def delete_pack(
     editor_service: MapEditorService = Depends(get_editor_service),
     current_user: User = Depends(get_current_user)
 ):
-    await editor_service.delete_pack(pack_id, current_user.id)
+    is_moderator = current_user.role in ["moderator", "admin"]
+    
+    await editor_service.delete_pack(pack_id, current_user.id, is_moderator)
     return {"message": "Pack deleted"}
 
 

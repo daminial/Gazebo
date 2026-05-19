@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react'
 import { mapTemplatesAPI, mapEditorAPI } from '../api'
 import { useNavigate } from 'react-router-dom'
 import './Map.css'
-import { FiMoreHorizontal, FiTrash2, FiStar } from 'react-icons/fi'
+import { useAuth } from '../context/AuthContext'
+import { FiMoreHorizontal, FiTrash2, FiStar, FiShield } from 'react-icons/fi'
 
 export default function Map() {
+  const { user, canDeleteContent } = useAuth()
   const [myMaps, setMyMaps] = useState([])
   const [topMaps, setTopMaps] = useState([])
   const [loading, setLoading] = useState(true)
@@ -25,9 +27,25 @@ export default function Map() {
 
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deletingMap, setDeletingMap] = useState(null)
+  const [isModeratorDelete, setIsModeratorDelete] = useState(false)
 
   const [selectedMapForRating, setSelectedMapForRating] = useState(null)
   const [hoverRating, setHoverRating] = useState(0)
+  const [selectedRating, setSelectedRating] = useState(0)
+
+  const getUserRatings = () => {
+    try {
+      return JSON.parse(localStorage.getItem('mapRatings') || '{}')
+    } catch {
+      return {}
+    }
+  }
+
+  const saveUserRating = (mapId, rating) => {
+    const ratings = getUserRatings()
+    ratings[mapId] = rating
+    localStorage.setItem('mapRatings', JSON.stringify(ratings))
+  }
 
   const openCreate = () => {
     setProjName('')
@@ -86,14 +104,21 @@ export default function Map() {
   }
 
   const handleRate = async (rating) => {
-    if (!selectedMapForRating) return
+    if (!selectedMapForRating || !rating) return
     try {
       const { data } = await mapTemplatesAPI.rate(selectedMapForRating.id, rating)
-      setTopMaps(prev => prev.map(m =>
-        m.id === selectedMapForRating.id ? { ...m, rating: data.rating, votes: data.votes } : m
+      saveUserRating(selectedMapForRating.id, rating)
+      
+      const newRating = Number(data.rating)
+      const newVotes = Number(data.votes)
+      
+      setTopMaps(prev => prev.map(m => 
+        m.id === selectedMapForRating.id 
+          ? { ...m, rating: newRating, votes: newVotes }
+          : { ...m }
       ))
+      
       setSelectedMapForRating(null)
-      setHoverRating(0)
     } catch (err) {
       console.error('Ошибка при выставлении рейтинга:', err)
       alert('Не удалось выставить рейтинг')
@@ -266,12 +291,28 @@ export default function Map() {
                         e.stopPropagation()
                         e.target.closest('.map-actions-menu').style.display = 'none'
                         setDeletingMap(m)
+                        setIsModeratorDelete(false)
                         setShowDeleteModal(true)
                       }}
                     >
                       <FiTrash2 size={14} style={{ marginRight: 6 }} />
                       Удалить
                     </button>
+                    {canDeleteContent && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          e.target.closest('.map-actions-menu').style.display = 'none'
+                          setDeletingMap(m)
+                          setIsModeratorDelete(true)
+                          setShowDeleteModal(true)
+                        }}
+                        className="moderator-delete-btn"
+                      >
+                        <FiShield size={14} style={{ marginRight: 6 }} />
+                        Удалить (Модератор)
+                      </button>
+                    )}
                   </div>
                 </div>
                 <div
@@ -302,12 +343,15 @@ export default function Map() {
         <div className="create-overlay" onClick={() => setShowDeleteModal(false)}>
           <div className="create-modal" style={{ maxWidth: 400 }} onClick={(e) => e.stopPropagation()}>
             <div className="create-modal-header">
-              <h3>Удалить карту</h3>
+              <h3>{isModeratorDelete ? 'Удалить карту (Модератор)' : 'Удалить карту'}</h3>
               <button className="create-modal-close" onClick={() => setShowDeleteModal(false)}>✕</button>
             </div>
             <div className="create-modal-body">
               <p style={{ margin: 0, color: '#333', fontSize: 14 }}>
-                Вы уверены, что хотите удалить карту <strong>«{deletingMap.name}»</strong>?
+                {isModeratorDelete
+                  ? `Вы уверены, что хотите удалить публичную карту «${deletingMap.name}»? Это действие необратимо.`
+                  : `Вы уверены, что хотите удалить карту «${deletingMap.name}»?`
+                }
               </p>
             </div>
             <div className="create-modal-footer" style={{ justifyContent: 'flex-end' }}>
@@ -318,11 +362,17 @@ export default function Map() {
                 className="btn-delete"
                 onClick={async () => {
                   try {
-                    await mapTemplatesAPI.delete(deletingMap.id)
+                    if (isModeratorDelete && canDeleteContent) {
+                      await mapTemplatesAPI.moderatorDelete(deletingMap.id)
+                    } else {
+                      await mapTemplatesAPI.delete(deletingMap.id)
+                    }
                     setShowDeleteModal(false)
                     setDeletingMap(null)
+                    setIsModeratorDelete(false)
                     loadAll()
                   } catch (err) {
+                    console.error('Ошибка удаления:', err)
                     alert('Ошибка удаления')
                   }
                 }}
@@ -358,9 +408,26 @@ export default function Map() {
               <div 
                 className="top-card" 
                 key={m.id}
-                onClick={() => setSelectedMapForRating(m)}
+                onClick={() => {
+                  setSelectedMapForRating(m)
+                  const ratings = getUserRatings()
+                  setSelectedRating(ratings[m.id] || 0)
+                }}
               >
-                {/* Левая часть: Картинка */}
+                {canDeleteContent && (
+                  <button
+                    className="moderator-delete-top-btn"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setDeletingMap(m)
+                      setIsModeratorDelete(true)
+                      setShowDeleteModal(true)
+                    }}
+                    title="Удалить карту (Модератор)"
+                  >
+                    <FiShield size={18} />
+                  </button>
+                )}
                 <div className="top-card-image-wrapper">
                   {m.image_url ? (
                     <img src={m.image_url} alt={m.name} />
@@ -371,7 +438,6 @@ export default function Map() {
                   )}
                 </div>
 
-                {/* Правая часть: Контент */}
                 <div className="top-card-content">
                   <div className="top-card-header">
                     <div className="top-card-info">
@@ -413,7 +479,6 @@ export default function Map() {
         )}
       </section>
 
-      {/* Rating Modal */}
       {/* Rating Modal */}
       {selectedMapForRating && (
         <div className="modal-overlay" onClick={() => setSelectedMapForRating(null)}>
@@ -462,8 +527,8 @@ export default function Map() {
                 {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((starValue) => (
                   <button
                     key={starValue}
-                    className={`star-btn ${starValue <= (hoverRating || selectedMapForRating.rating) ? 'active' : ''}`}
-                    onClick={() => handleRate(starValue)}
+                    className={`star-btn ${starValue <= (hoverRating || selectedRating) ? 'active' : ''}`}
+                    onClick={() => setSelectedRating(starValue)}
                     onMouseEnter={() => setHoverRating(starValue)}
                     onMouseLeave={() => setHoverRating(0)}
                   >
@@ -475,6 +540,13 @@ export default function Map() {
                 Средний рейтинг: {Number(selectedMapForRating.rating || 0).toFixed(1)}/10 
                 ({selectedMapForRating.votes || 0} {selectedMapForRating.votes === 1 ? 'голос' : 'голосов'})
               </p>
+              <button 
+                className="btn-rate-submit"
+                onClick={() => handleRate(selectedRating)}
+                disabled={!selectedRating}
+              >
+                Оценить
+              </button>
             </div>
           </div>
         </div>

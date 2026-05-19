@@ -32,7 +32,6 @@ function GameBoardContent() {
   const [showDicePanel, setShowDicePanel] = useState(false)
   const [measureMode, setMeasureMode] = useState('line')
 
-  // Состояние для рисования
   const [drawColor, setDrawColor] = useState('#ff0000')
   const [drawBrushSize, setDrawBrushSize] = useState(4)
   const drawingLayerRef = useRef(null)
@@ -229,8 +228,7 @@ function GameBoardContent() {
         onReady={handleDiceReady}
         debug={true}
       />
-  
-      {/* Left Toolbar */}
+
       <aside className="toolbar-left">
         <div className="toolbar-section">
           <button className="toolbar-btn menu-btn">
@@ -285,7 +283,6 @@ function GameBoardContent() {
         </div>
       </aside>
 
-      {/* Drawing Toolbar - появляется справа от основного toolbar */}
       {activeTool === 'draw' && (
         <DrawingToolbar
           color={drawColor}
@@ -297,7 +294,6 @@ function GameBoardContent() {
         />
       )}
 
-      {/* Main Canvas Area */}
       <main className="canvas-area">
         <div className="map-container" style={{ background: backgroundColor }}>
           <MapCanvas
@@ -315,12 +311,10 @@ function GameBoardContent() {
         </div>
       </main>
 
-      {/* Fixed Video Section */}
       <div className="fixed-video-section">
         <VideoGrid />
       </div>
 
-      {/* Right Sidebar */}
       <aside className="sidebar-right">
         <div className="sidebar-tabs">
           <button
@@ -390,7 +384,6 @@ function GameBoardContent() {
         </div>
       </aside>
 
-      {/* Dice Panel */}
       <DicePanel
         visible={showDicePanel}
         onClose={() => setShowDicePanel(false)}
