@@ -71,14 +71,19 @@ async def get_my_rooms(
 async def get_room(
         room_id: UUID,
         db: AsyncSession = Depends(get_db),
-        current_user: User = Depends(get_current_user)
+        current_user: User = Depends(get_current_user),
+        s3_client: S3Client = Depends(get_s3_client)
 ):
     """Получить информацию о комнате"""
-    service = RoomService(db)
+    media_service = MediaService(s3_client, db)
+    service = RoomService(db, media_service)
     room = await service.get_room(room_id)
 
     if not room or not await service.is_in_room(room_id, current_user.id):
         raise HTTPException(403, "Вы не в этой комнате")
+
+    if room.image:
+        room.image_url = await media_service.get_image_url(room.image)
 
     return room
 
@@ -283,27 +288,6 @@ async def get_room_maps(
 
     maps = await service.get_room_maps(room_id)
     return maps
-
-
-# @router.put("/{room_id}/maps/{map_id}", response_model=RoomMapResponse)
-# async def update_room_map(
-#         room_id: UUID,
-#         map_id: int,
-#         map_update: RoomMapUpdate,
-#         db: AsyncSession = Depends(get_db),
-#         current_user: User = Depends(get_current_user)
-# ):
-#     """Обновить карту в комнате (только DM)"""
-#     service = RoomService(db)
-#
-#     if not service.is_dm(room_id, current_user.id):
-#         raise HTTPException(403, "Только DM может изменять карты")
-#
-#     room_map = service.update_room_map(map_id, map_update.dict(exclude_unset=True))
-#     if not room_map:
-#         raise HTTPException(404, "Карта не найдена")
-#
-#     return room_map
 
 
 @router.delete("/{room_id}/maps/{map_id}")

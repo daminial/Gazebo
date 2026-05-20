@@ -100,7 +100,7 @@ class RoomService:
         return list(result.scalars().all())
 
     async def get_room(self, room_id: UUID) -> Room:
-        """Получить комнату по ID с загрузкой изображения, настроек и страниц"""
+        """Получить комнату по ID"""
         result = await self.db.execute(
             select(Room)
             .options(
@@ -228,7 +228,8 @@ class RoomService:
                 user_id=ru.user.id,
                 username=ru.user.username,
                 room_role=ru.room_role,
-                joined_at=ru.joined_at
+                joined_at=ru.joined_at,
+                avatar_id=ru.user.avatar_id
             )
             for ru in room_users
         ]

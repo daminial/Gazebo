@@ -134,6 +134,7 @@ class RoomResponse(BaseModel):
     updated_at: Optional[datetime] = None
     status: RoomStatus = RoomStatus.PAUSED
     image_id: Optional[int] = None
+    image_url: Optional[str] = None
     current_page_id: Optional[int] = None
 
     settings: Optional[RoomSettingsResponse] = None
@@ -175,6 +176,7 @@ class RoomUserListItem(BaseModel):
     username: str
     room_role: RoomRole
     joined_at: datetime
+    avatar_id: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)
 

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { roomsAPI } from '../api'
+import { useAuth } from '../context/AuthContext.jsx'
 import CreateRoomModal from '../components/CreateRoomModal.jsx'
 import './Companies.css'
 
@@ -10,10 +11,20 @@ export default function Companies() {
   const [error, setError] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const navigate = useNavigate()
+  const { user } = useAuth()
+
+  const [contextMenu, setContextMenu] = useState(null)
+  const [selectedCompanyId, setSelectedCompanyId] = useState(null)
 
   useEffect(() => {
     loadCompanies()
   }, [])
+
+  useEffect(() => {
+    if (user) {
+      loadCompanies()
+    }
+  }, [user?.avatar_id])
 
   const loadCompanies = async () => {
     try {
@@ -28,6 +39,40 @@ export default function Companies() {
 
   const handleCompanyClick = (companyId) => {
     navigate(`/companies/${companyId}`)
+  }
+
+  const handleCompanyContextMenu = (e, companyId) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setSelectedCompanyId(companyId)
+    setContextMenu({
+      x: e.clientX,
+      y: e.clientY
+    })
+  }
+
+  const closeContextMenu = () => {
+    setContextMenu(null)
+    setSelectedCompanyId(null)
+  }
+
+  const handleDeleteCompany = async () => {
+    if (!selectedCompanyId) return
+
+    if (!window.confirm('Вы уверены, что хотите удалить эту компанию? Это действие нельзя отменить.')) {
+      closeContextMenu()
+      return
+    }
+
+    try {
+      await roomsAPI.delete(selectedCompanyId)
+      setCompanies(companies.filter(c => c.id !== selectedCompanyId))
+      closeContextMenu()
+    } catch (err) {
+      console.error('Ошибка при удалении компании:', err)
+      alert('Ошибка при удалении компании')
+      closeContextMenu()
+    }
   }
 
   if (loading) {
@@ -54,12 +99,52 @@ export default function Companies() {
 
       {error && <p className="error-message">{error}</p>}
 
+      {contextMenu && (
+        <>
+          <div
+            className="context-menu"
+            style={{
+              position: 'fixed',
+              top: contextMenu.y,
+              left: contextMenu.x,
+              background: 'white',
+              border: '1px solid #ccc',
+              borderRadius: '4px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+              zIndex: 1000,
+              minWidth: '150px'
+            }}
+            onClick={closeContextMenu}
+          >
+            <button
+              className="context-menu-item"
+              onClick={handleDeleteCompany}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                background: 'none',
+                border: 'none',
+                textAlign: 'left',
+                cursor: 'pointer',
+                color: '#dc3545',
+                fontSize: '14px'
+              }}
+            >
+              🗑 Удалить компанию
+            </button>
+          </div>
+          <div className="context-menu-overlay" style={{ position: 'fixed', inset: 0, zIndex: 999 }} onClick={closeContextMenu} />
+        </>
+      )}
+
       <div className="companies-grid">
         {companies.map(company => (
-          <div 
-            key={company.id} 
+          <div
+            key={company.id}
             className="company-card"
             onClick={() => handleCompanyClick(company.id)}
+            onContextMenu={(e) => handleCompanyContextMenu(e, company.id)}
+            style={{ cursor: 'context-menu' }}
           >
             {company.image_id ? (
               <>

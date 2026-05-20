@@ -5,7 +5,7 @@ rtc:
   use_external_ip: false
   node_ip: 192.168.0.109
 keys:
-  APILocalKey123: LIVEKIT_API_KEY
+  APILocalKey123: fbcba4553a2931d791341fd0f0ed0555
 logging:
   level: info
 room:

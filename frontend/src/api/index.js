@@ -70,6 +70,16 @@ export const authAPI = {
   updateMe: (data) => api.put('/auth/me', data),
   refreshToken: (refreshToken) => api.post('/auth/refresh', { refresh_token: refreshToken }),
   searchUsers: (query) => api.get(`/auth/users/search?q=${encodeURIComponent(query)}`),
+  uploadAvatar: (file) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    return api.post('/auth/avatar', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+  },
+  deleteAvatar: () => api.delete('/auth/avatar'),
   
   uploadAvatar: (file) => {
     const formData = new FormData()

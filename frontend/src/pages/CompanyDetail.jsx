@@ -37,7 +37,7 @@ export default function CompanyDetail() {
       setCompany({
         id: roomData.id,
         name: roomData.name,
-        logo: roomData.image?.url || 'https://placehold.co/600x200/DC143C/FFFFFF?text=Room',
+        logo: roomData.image_url || 'https://placehold.co/600x200/DC143C/FFFFFF?text=Room',
         description: roomData.description || '',
         ownerId: roomData.owner_id,
         status: roomData.status
@@ -55,7 +55,8 @@ export default function CompanyDetail() {
             setOwner({
               id: ownerUser.user_id,
               username: ownerUser.username,
-              role: ownerUser.room_role
+              role: ownerUser.room_role,
+              avatar_id: ownerUser.avatar_id
             })
           }
         } catch (err) {
@@ -264,7 +265,20 @@ export default function CompanyDetail() {
             <h4 className="section-label">Автор</h4>
             <div className="author-info">
               <div className="player-avatar">
-                {owner?.username?.[0]?.toUpperCase() || '?'}
+                {owner?.avatar_id ? (
+                  <img
+                    src={`/api/auth/avatar/${owner.id}`}
+                    alt={owner.username}
+                    className="player-avatar-img"
+                    onError={(e) => {
+                      e.target.style.display = 'none'
+                      e.target.nextSibling.style.display = 'flex'
+                    }}
+                  />
+                ) : null}
+                <div className="player-avatar-placeholder" style={{display: owner?.avatar_id ? 'none' : 'flex'}}>
+                  {owner?.username?.[0]?.toUpperCase() || '?'}
+                </div>
               </div>
               <span className="player-name">{owner?.username || 'Неизвестно'}</span>
             </div>
@@ -289,7 +303,20 @@ export default function CompanyDetail() {
                   onContextMenu={(e) => handlePlayerContextMenu(e, user.user_id)}
                   style={{ cursor: 'context-menu' }}
                 >
-                  {user.username?.[0]?.toUpperCase() || '?'}
+                  {user.avatar_id ? (
+                    <img
+                      src={`/api/auth/avatar/${user.user_id}`}
+                      alt={user.username}
+                      className="player-avatar-img"
+                      onError={(e) => {
+                        e.target.style.display = 'none'
+                        e.target.nextSibling.style.display = 'flex'
+                      }}
+                    />
+                  ) : null}
+                  <div className="player-avatar-placeholder" style={{display: user.avatar_id ? 'none' : 'flex'}}>
+                    {user.username?.[0]?.toUpperCase() || '?'}
+                  </div>
                 </div>
               ))}
             </div>
@@ -298,7 +325,6 @@ export default function CompanyDetail() {
       </main>
       )}
 
-      {/* Invite Modal */}
       {showInviteModal && (
         <div className="modal-overlay" onClick={closeInviteModal}>
           <div className="modal-content invite-modal" onClick={(e) => e.stopPropagation()}>
@@ -375,7 +401,20 @@ export default function CompanyDetail() {
                         {searchResults.map((user) => (
                           <div key={user.id} className="result-item">
                             <div className="result-avatar">
-                              {user.username?.[0]?.toUpperCase() || '?'}
+                              {user.avatar_id ? (
+                                <img
+                                  src={`/api/auth/avatar/${user.id}`}
+                                  alt={user.username}
+                                  className="result-avatar-img"
+                                  onError={(e) => {
+                                    e.target.style.display = 'none'
+                                    e.target.nextSibling.style.display = 'flex'
+                                  }}
+                                />
+                              ) : null}
+                              <div className="result-avatar-placeholder" style={{display: user.avatar_id ? 'none' : 'flex'}}>
+                                {user.username?.[0]?.toUpperCase() || '?'}
+                              </div>
                             </div>
                             <span className="result-nickname">{user.username}</span>
                             <button

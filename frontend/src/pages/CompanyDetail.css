@@ -284,6 +284,25 @@
   color: #FDF8E8;
   font-size: 18px;
   border: 2px solid #D4C4A8;
+  position: relative;
+  overflow: hidden;
+}
+
+.player-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.player-avatar-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .player-avatar.empty {
@@ -620,6 +639,25 @@
   font-size: 16px;
   border: 2px solid #D4C4A8;
   flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.result-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.result-avatar-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .result-nickname {
