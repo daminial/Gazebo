@@ -91,47 +91,40 @@ class GoogleProvider(OAuthProvider):
             }
 
 
-class VKProvider(OAuthProvider):
+class YandexProvider(OAuthProvider):
     async def get_authorization_url(self) -> str:
         params = (
-            f"client_id={settings.VK_CLIENT_ID}"
-            f"&redirect_uri={settings.VK_REDIRECT_URI}"
-            f"&display=page"
-            f"&scope=email"
+            f"client_id={settings.YANDEX_CLIENT_ID}"
+            f"&redirect_uri={settings.YANDEX_REDIRECT_URI}"
             f"&response_type=code"
-            f"&v=5.131"
         )
-        return f"https://oauth.vk.com/authorize?{params}"
+        return f"https://oauth.yandex.ru/authorize?{params}"
     
     async def get_user_info(self, code: str) -> Dict[str, Any]:
         async with httpx.AsyncClient() as client:
-            token_resp = await client.get(
-                "https://oauth.vk.com/access_token",
-                params={
-                    "client_id": settings.VK_CLIENT_ID,
-                    "client_secret": settings.VK_CLIENT_SECRET,
-                    "redirect_uri": settings.VK_REDIRECT_URI,
-                    "code": code
+            token_resp = await client.post(
+                "https://oauth.yandex.ru/token",
+                data={
+                    "grant_type": "authorization_code",
+                    "code": code,
+                    "client_id": settings.YANDEX_CLIENT_ID,
+                    "client_secret": settings.YANDEX_CLIENT_SECRET
                 }
             )
-            data = token_resp.json()
+            access_token = token_resp.json()["access_token"]
             
+            headers = {"Authorization": f"OAuth {access_token}"}
             user_resp = await client.get(
-                "https://api.vk.com/method/users.get",
-                params={
-                    "user_ids": data["user_id"],
-                    "fields": "photo_200",
-                    "access_token": data["access_token"],
-                    "v": "5.131"
-                }
+                "https://login.yandex.ru/info?format=json",
+                headers=headers
             )
-            user_data = user_resp.json()["response"][0]
+            user_data = user_resp.json()
             
             return {
-                "email": data.get("email", f"vk{data['user_id']}@vk.com"),
-                "username": f"vk_{data['user_id']}",
-                "full_name": f"{user_data['first_name']} {user_data['last_name']}",
-                "provider": "vk",
-                "provider_id": str(data["user_id"])
+                "email": user_data["default_email"],
+                "username": user_data.get("login", user_data["default_email"].split("@")[0]),
+                "full_name": f"{user_data.get('first_name', '')} {user_data.get('last_name', '')}".strip(),
+                "provider": "yandex",
+                "provider_id": str(user_data["id"])
             }
         

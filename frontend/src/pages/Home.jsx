@@ -31,7 +31,7 @@ export default function Home() {
 
   const handleMapClick = () => {
     if (isAuthenticated) {
-      navigate('/maps')
+      navigate('/map')
     } else {
       navigate('/register')
     }

@@ -17,7 +17,7 @@ from src.auth.schemas import (
     EmailVerification, RefreshTokenRequest
 )
 from src.auth.service import AuthService
-from src.auth.oauth_providers import GitHubProvider, GoogleProvider, VKProvider
+from src.auth.oauth_providers import GitHubProvider, GoogleProvider, YandexProvider
 from src.auth.dependencies import (
     CurrentActiveUser, CurrentModerator, CurrentSuperuser, get_current_user
 )
@@ -78,7 +78,7 @@ async def oauth_login(provider: str):
     providers = {
         "github": GitHubProvider(),
         "google": GoogleProvider(),
-        "vk": VKProvider()
+        "yandex": YandexProvider()
     }
     
     if provider not in providers:
@@ -116,7 +116,7 @@ async def oauth_callback(
     providers = {
         "github": GitHubProvider(),
         "google": GoogleProvider(),
-        "vk": VKProvider()
+        "yandex": YandexProvider()
     }
     
     if provider not in providers:

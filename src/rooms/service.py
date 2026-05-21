@@ -348,7 +348,6 @@ class RoomService:
             **token_dict
         )
         self.db.add(token)
-        # Ensure DB defaults (id, timestamps) are populated before returning
         await self.db.flush()
         return token
 
@@ -441,8 +440,6 @@ class RoomService:
         if not await self.is_dm(token.room_id, user.id):
             raise RoomPermissionError("Только DM может изменять токены")
 
-        # Only allow updating a restricted set of scalar fields to avoid
-        # accidentally overwriting relationship attributes (like creature_template)
         allowed_fields = {
             'name_in_room', 'current_hp', 'current_ac', 'creature_template_id',
             'is_visible', 'width', 'height', 'rotation', 'position_x', 'position_y',
@@ -451,7 +448,6 @@ class RoomService:
 
         for key, value in data.items():
             if key not in allowed_fields:
-                # ignore unknown or dangerous fields (e.g. 'creature_template')
                 continue
             setattr(token, key, value)
 
@@ -677,7 +673,6 @@ class RoomService:
         if not room:
             raise HTTPException(404, "Комната не найдена")
 
-        # Проверка, что страница принадлежит комнате
         page = await self.get_room_page(page_id)
         if not page or page.room_id != room_id:
             raise HTTPException(400, "Страница не принадлежит этой комнате")
