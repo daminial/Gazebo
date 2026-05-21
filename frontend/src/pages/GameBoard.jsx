@@ -346,13 +346,6 @@ function GameBoardContent() {
             <FaMusic size={18} />
           </button>
           <button
-            className={`tab-btn ${activeTab === 'notes' ? 'active' : ''}`}
-            onClick={() => setActiveTab('notes')}
-            title="Заметки"
-          >
-            <FaStickyNote size={18} />
-          </button>
-          <button
             className={`tab-btn ${activeTab === 'settings' ? 'active' : ''}`}
             onClick={() => setActiveTab('settings')}
             title="Настройки"

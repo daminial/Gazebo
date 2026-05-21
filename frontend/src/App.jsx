@@ -13,21 +13,13 @@ import Profile from './pages/Profile.jsx'
 import Companies from './pages/Companies.jsx'
 import CompanyDetail from './pages/CompanyDetail.jsx'
 import GameBoard from './pages/GameBoard.jsx'
+import Help from './pages/Help.jsx'
 import './App.css'
 
 function Music() {
   return (
     <div className="placeholder-page">
       <h2 className="section-title">Музыка</h2>
-      <p>Страница в разработке</p>
-    </div>
-  )
-}
-
-function Help() {
-  return (
-    <div className="placeholder-page">
-      <h2 className="section-title">Помощь</h2>
       <p>Страница в разработке</p>
     </div>
   )

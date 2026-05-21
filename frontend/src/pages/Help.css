@@ -1,0 +1,134 @@
+.help-page {
+  min-height: 100vh;
+  background-color: #5F6C37;
+  padding: 40px 20px;
+}
+
+.help-container {
+  max-width: 900px;
+  margin: 0 auto;
+  background: #5F6C37;
+  color: #fff;
+}
+
+.help-page h1 {
+  color: #fff;
+  font-size: 2.5rem;
+  margin-bottom: 30px;
+  text-align: center;
+}
+
+.contacts-minimal {
+  display: flex;
+  justify-content: center;
+  gap: 30px;
+  margin-bottom: 40px;
+  flex-wrap: wrap;
+}
+
+.contact-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #fff;
+  text-decoration: none;
+  font-size: 1.1rem;
+  transition: opacity 0.3s ease;
+}
+
+.contact-link:hover {
+  opacity: 0.8;
+  text-decoration: underline;
+}
+
+.guide-section {
+  border-radius: 12px;
+  padding: 30px;
+}
+
+.guide-section h2 {
+  color: #fff;
+  font-size: 1.8rem;
+  margin-bottom: 25px;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.3);
+  padding-bottom: 10px;
+}
+
+.guide-section section {
+  margin-bottom: 30px;
+}
+
+.guide-section h3 {
+  color: #fff;
+  font-size: 1.4rem;
+  margin-bottom: 15px;
+  margin-top: 20px;
+}
+
+.guide-section h4 {
+  color: #e0e0e0;
+  font-size: 1.1rem;
+  margin-bottom: 8px;
+  margin-top: 15px;
+}
+
+.guide-section p {
+  color: #f0f0f0;
+  line-height: 1.6;
+  margin-bottom: 10px;
+}
+
+.guide-section ul {
+  color: #f0f0f0;
+  line-height: 1.8;
+  padding-left: 20px;
+}
+
+.guide-section li {
+  margin-bottom: 8px;
+}
+
+.guide-section strong {
+  color: #fff;
+}
+.contacts-section {
+  margin-top: 40px;
+}
+
+.contacts-divider {
+  border: none;
+  height: 1px;
+  background-color: rgba(255, 255, 255, 0.3);
+  margin: 0 0 30px 0;
+}
+
+.contacts-title {
+  text-align: center;
+  color: #fff;
+  font-size: 1.8rem;
+  margin-bottom: 25px;
+}
+
+@media (max-width: 768px) {
+  .help-container {
+    padding: 20px;
+  }
+
+  .help-page h1 {
+    font-size: 2rem;
+  }
+
+  .guide-section h2 {
+    font-size: 1.5rem;
+  }
+
+  .guide-section h3 {
+    font-size: 1.2rem;
+  }
+
+  .contacts-minimal {
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+  }
+}
